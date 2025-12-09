@@ -10,7 +10,7 @@ class TestConfiguration extends Command
     /**
      * The name and signature of the console command.
      */
-    protected $signature = 'config:test {mode} {param1?} {param2?} {param3?}';
+    protected $signature = 'config:test {mode} {param1?} {param2?} {param3?} {param4?}';
 
     /**
      * The console command description.
@@ -48,14 +48,19 @@ class TestConfiguration extends Command
         $water = $this->argument('param2');
         $oil = $this->argument('param3');
 
-        if (!$particulate || !$water || !$oil) {
+        if ($particulate === null || $water === null || $oil === null) {
             $this->error('Missing parameters for ISO mode');
             $this->info('Usage: php artisan config:test iso [particulate] [water] [oil] [flow?]');
             return 1;
         }
 
-        $flow = $this->ask('Enter flow (CFM) or press Enter to see all ranges', null);
-        $flow = $flow ? (float) $flow : null;
+        // Check if flow was provided as 4th argument
+        if ($this->argument('param4')) {
+            $flow = (float) $this->argument('param4');
+        } else {
+            $flowInput = $this->ask('Enter flow (CFM) or press Enter to see all ranges', null);
+            $flow = $flowInput ? (float) $flowInput : null;
+        }
 
         $this->info("Testing ISO Class: {$particulate}.{$water}.{$oil}");
         if ($flow) {
@@ -122,7 +127,8 @@ class TestConfiguration extends Command
             return;
         }
 
-        $this->info("Found " . count($result['configurations']) . " configuration(s):");
+        $configCount = count($result['configurations']);
+        $this->info("Found {$configCount} configuration(s):");
         $this->info('');
 
         foreach ($result['configurations'] as $index => $config) {
