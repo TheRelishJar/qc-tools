@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use Illuminate\Console\Command;
 use App\Services\ConfigurationService;
+use App\Helpers\IsoHelper;
 
 class TestConfiguration extends Command
 {
@@ -116,7 +117,7 @@ class TestConfiguration extends Command
         }
 
         $this->info($result['message']);
-        $this->info('ISO Class: ' . $result['iso_class']);
+        $this->info('ISO Class: ' . IsoHelper::formatIsoClass($result['iso_class']));
         $this->info('');
 
         if (empty($result['configurations'])) {

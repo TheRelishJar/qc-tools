@@ -70,7 +70,7 @@ export default function Results({ result }) {
                                     </>
                                 )}
                                 <div>
-                                    <span className="font-medium">ISO Class:</span> {result.iso_class}
+                                    <span className="font-medium">ISO Class:</span> {result.input.iso_class_display}
                                 </div>
                                 <div>
                                     <span className="font-medium">Flow:</span> {result.input.flow ? `${result.input.flow} CFM` : 'All Ranges'}

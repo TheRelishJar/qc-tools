@@ -8,6 +8,7 @@ use App\Models\Industry;
 use App\Models\Application;
 use App\Models\IsoPurityLevel;
 use Inertia\Inertia;
+use App\Helpers\IsoHelper;
 
 class ConfigurationController extends Controller
 {
@@ -73,6 +74,7 @@ class ConfigurationController extends Controller
                 'industry' => $application->industry->name,
                 'application' => $application->name,
                 'flow' => $validated['flow'] ?? null,
+                'iso_class_display' => IsoHelper::formatIsoClass($result['iso_class']),
             ];
         } else {
             $result = $this->configService->generateFromIsoClass(
@@ -88,6 +90,7 @@ class ConfigurationController extends Controller
                 'water_class' => $validated['water_class'],
                 'oil_class' => $validated['oil_class'],
                 'flow' => $validated['flow'] ?? null,
+                'iso_class_display' => IsoHelper::formatIsoClass($result['iso_class']),
             ];
         }
 

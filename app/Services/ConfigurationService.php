@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\IsoConfiguration;
 use App\Models\ProductRange;
 use Illuminate\Support\Collection;
+use App\Helpers\IsoHelper;
 
 class ConfigurationService
 {
@@ -64,10 +65,24 @@ class ConfigurationService
         $dryerInfo = $this->findDryerComponent($isoConfig);
 
         if (!$dryerInfo) {
+            // No dryer specified - return the base configuration as-is
             return [
-                'success' => false,
-                'message' => "No dryer component found in configuration",
-                'configurations' => [],
+                'success' => true,
+                'message' => "Configuration found (no dryer specified)",
+                'iso_class' => $isoClass,
+                'flow' => $flow,
+                'configurations' => [
+                    [
+                        'dryer_type' => 'N/A',
+                        'product_range' => 'No dryer required',
+                        'flow_range' => 'N/A',
+                        'min_flow' => null,
+                        'max_flow' => null,
+                        'compressor' => $isoConfig->compressor,
+                        'components' => $this->buildBaseComponentArray($isoConfig),
+                        'iso_class' => $isoClass,
+                    ]
+                ],
             ];
         }
 
@@ -215,6 +230,22 @@ class ConfigurationService
 
         return $components;
 
+    }
+
+    //Build base component array without dryer substitution
+    private function buildBaseComponentArray(IsoConfiguration $config): array
+    {
+        $components = [];
+        $qasComponents = ['qas1', 'qas2', 'qas3', 'qas4', 'qas5', 'qas6', 'qas7', 'qas8', 'qas9'];
+
+        foreach ($qasComponents as $component) {
+            $value = $config->$component;
+            if ($value) {
+                $components[] = $value;
+            }
+        }
+
+        return $components;
     }
 
 
