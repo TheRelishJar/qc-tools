@@ -63,6 +63,15 @@ class ConfigurationController extends Controller
             'iso_class_display' => IsoHelper::formatIsoClass($result['iso_class']),
         ];
 
+        // Return JSON for AJAX requests, Inertia for normal requests
+        if ($request->wantsJson() || $request->ajax()) {
+            return response()->json([
+                'props' => [
+                    'result' => $result,
+                ],
+            ]);
+        }
+
         return Inertia::render('ConfigurationTool/Results', [
             'result' => $result,
         ]);
