@@ -5,10 +5,9 @@ namespace App\Http\Controllers;
 use Illuminate\Http\Request;
 use App\Services\ConfigurationService;
 use App\Models\Industry;
-use App\Models\Application;
 use App\Models\IsoPurityLevel;
-use Inertia\Inertia;
 use App\Helpers\IsoHelper;
+use Inertia\Inertia;
 
 class ConfigurationController extends Controller
 {
@@ -38,61 +37,31 @@ class ConfigurationController extends Controller
     }
 
     /**
-     * Generate configurations
+     * Generate configurations - ISO mode only
      */
     public function generate(Request $request)
     {
-        // Base validation
-        $rules = [
-            'mode' => 'required|in:industry,iso',
+        $validated = $request->validate([
+            'particulate_class' => 'required|string',
+            'water_class' => 'required|string',
+            'oil_class' => 'required|string',
             'flow' => 'nullable|numeric|min:0',
+        ]);
+
+        $result = $this->configService->generateFromIsoClass(
+            $validated['particulate_class'],
+            $validated['water_class'],
+            $validated['oil_class'],
+            $validated['flow'] ?? null
+        );
+
+        $result['input'] = [
+            'particulate_class' => $validated['particulate_class'],
+            'water_class' => $validated['water_class'],
+            'oil_class' => $validated['oil_class'],
+            'flow' => $validated['flow'] ?? null,
+            'iso_class_display' => IsoHelper::formatIsoClass($result['iso_class']),
         ];
-
-        // Add mode-specific validation
-        if ($request->mode === 'industry') {
-            $rules['industry_id'] = 'required|exists:industries,id';
-            $rules['application_id'] = 'required|exists:applications,id';
-        } else if ($request->mode === 'iso') {
-            $rules['particulate_class'] = 'required|string';
-            $rules['water_class'] = 'required|string';
-            $rules['oil_class'] = 'required|string';
-        }
-
-        $validated = $request->validate($rules);
-
-        if ($validated['mode'] === 'industry') {
-            $application = Application::with('industry')->findOrFail($validated['application_id']);
-            
-            $result = $this->configService->generateFromIndustryApplication(
-                $application->industry->name,
-                $application->name,
-                $validated['flow'] ?? null
-            );
-
-            $result['input'] = [
-                'mode' => 'industry',
-                'industry' => $application->industry->name,
-                'application' => $application->name,
-                'flow' => $validated['flow'] ?? null,
-                'iso_class_display' => IsoHelper::formatIsoClass($result['iso_class']),
-            ];
-        } else {
-            $result = $this->configService->generateFromIsoClass(
-                $validated['particulate_class'],
-                $validated['water_class'],
-                $validated['oil_class'],
-                $validated['flow'] ?? null
-            );
-
-            $result['input'] = [
-                'mode' => 'iso',
-                'particulate_class' => $validated['particulate_class'],
-                'water_class' => $validated['water_class'],
-                'oil_class' => $validated['oil_class'],
-                'flow' => $validated['flow'] ?? null,
-                'iso_class_display' => IsoHelper::formatIsoClass($result['iso_class']),
-            ];
-        }
 
         return Inertia::render('ConfigurationTool/Results', [
             'result' => $result,

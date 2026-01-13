@@ -6,22 +6,24 @@ use App\Models\Application;
 use App\Models\IsoConfiguration;
 use App\Models\ProductRange;
 use Illuminate\Support\Collection;
-use App\Helpers\IsoHelper;
 
 class ConfigurationService
 {
+    /**
+     * Generate configurations from Industry/Application/Flow input
+     * Flow is optional - if null, returns all product ranges
+     */
     public function generateFromIndustryApplication(
         string $industryName,
         string $applicationName,
         ?float $flow = null
     ): array {
-        // Find application's ISO classes
-        $application = Application::whereHas(
-            'industry', 
-            function ($query) use ($industryName) {
-                $query->where('name', $industryName);
-            }
-        )->where ('name', $applicationName)->first();
+        // Step 1: Find the application and get its ISO class
+        $application = Application::whereHas('industry', function ($query) use ($industryName) {
+            $query->where('name', $industryName);
+        })
+        ->where('name', $applicationName)
+        ->first();
 
         if (!$application) {
             return [
@@ -31,10 +33,10 @@ class ConfigurationService
             ];
         }
 
-        // Build ISO class string
+        // Step 2: Build ISO class string
         $isoClass = "{$application->particulate_class}.{$application->water_class}.{$application->oil_class}";
 
-        // Generate configurations
+        // Step 3: Generate configurations with flow filtering
         return $this->generateFromIsoClass(
             $application->particulate_class,
             $application->water_class,
@@ -43,15 +45,19 @@ class ConfigurationService
         );
     }
 
-    // Generate congigurations from ISO class input
+    /**
+     * Generate configurations from direct ISO class input
+     */
     public function generateFromIsoClass(
         string $particulateClass,
         string $waterClass,
         string $oilClass,
         ?float $flow = null
     ): array {
+        // Step 1: Build ISO class string
         $isoClass = "{$particulateClass}.{$waterClass}.{$oilClass}";
 
+        // Step 2: Find the base configuration
         $isoConfig = IsoConfiguration::where('iso_class', $isoClass)->first();
 
         if (!$isoConfig) {
@@ -62,6 +68,7 @@ class ConfigurationService
             ];
         }
 
+        // Step 3: Find which QAS component contains the dryers
         $dryerInfo = $this->findDryerComponent($isoConfig);
 
         if (!$dryerInfo) {
@@ -86,19 +93,23 @@ class ConfigurationService
             ];
         }
 
-        // Parse dryer options
+        // Step 4: Parse dryer options (split by /)
         $dryerOptions = array_map('trim', explode('/', $dryerInfo['raw']));
 
+        // Step 5: Extract dewpoint from dryer string
         $dewpoint = $this->extractDewpoint($dryerInfo['raw']);
 
+        // Step 6: For each dryer option, find compatible product ranges
         $configurations = [];
 
         foreach ($dryerOptions as $dryerOption) {
             $dryerType = $this->extractDryerType($dryerOption);
-            
+
+            // Find product ranges for this dryer type
             $productRanges = $this->findProductRanges($waterClass, $dryerType, $dewpoint, $flow);
-            
+
             foreach ($productRanges as $range) {
+                // Build the configuration with this specific product range
                 $components = $this->buildComponentArray($isoConfig, $dryerInfo['position'], $range, $dewpoint);
 
                 $configurations[] = [
@@ -116,7 +127,7 @@ class ConfigurationService
 
         return [
             'success' => true,
-            'message' => count($configurations) > 0
+            'message' => count($configurations) > 0 
                 ? "Found " . count($configurations) . " configuration(s)"
                 : "No compatible configurations found for this flow",
             'iso_class' => $isoClass,
@@ -125,8 +136,11 @@ class ConfigurationService
         ];
     }
 
-    // Find which QAS component contans the dryers
-    private function findDryerComponent(IsoConfiguration $config): ?array {
+    /**
+     * Find which QAS component contains the dryers
+     */
+    private function findDryerComponent(IsoConfiguration $config): ?array
+    {
         $qasComponents = [
             'qas1', 'qas2', 'qas3', 'qas4', 'qas5',
             'qas6', 'qas7', 'qas8', 'qas9'
@@ -144,7 +158,7 @@ class ConfigurationService
                     if (str_contains($value, $dryer)) {
                         return [
                             'raw' => $value,
-                            'position' => $index +1,
+                            'position' => $index + 1, // QAS1 = position 1
                             'component' => $component,
                         ];
                     }
@@ -153,11 +167,13 @@ class ConfigurationService
         }
 
         return null;
-
     }
 
-    // Helper to extract dewpoint from dryer string
-    private function extractDewpoint(string $dryerString): ?string {
+    /**
+     * Extract dewpoint from dryer string
+     */
+    private function extractDewpoint(string $dryerString): ?string
+    {
         if (str_contains($dryerString, '(-100F)') || str_contains($dryerString, '(-100)')) {
             return '-100F';
         }
@@ -170,20 +186,29 @@ class ConfigurationService
         return null;
     }
 
-    // Helper to extract dryer type from dryer option string
-    private function extractDryerType(string $dryerOption): string {
+    /**
+     * Extract dryer type from dryer option string
+     */
+    private function extractDryerType(string $dryerOption): string
+    {
+        // Split on space or parenthesis to get the base type
         $parts = preg_split('/[\s(]/', $dryerOption);
         return trim($parts[0]);
     }
 
-    // Find compatible product ranges
+    /**
+     * Find compatible product ranges
+     */
     private function findProductRanges(
         string $waterClass,
         string $dryerType,
         ?string $dewpoint,
         ?float $flow
     ): Collection {
-        $query = ProductRange::where('water_class', $waterClass)
+        // Water class 5 uses the same product ranges as water class 4
+        $lookupWaterClass = ($waterClass === '5') ? '4' : $waterClass;
+        
+        $query = ProductRange::where('water_class', $lookupWaterClass)
             ->where('product_range', 'like', "{$dryerType}%");
 
         // Filter by dewpoint if provided
@@ -200,9 +225,10 @@ class ConfigurationService
         return $query->get();
     }
 
-
-    // Build array of components for each configuration
-    private function buildComponentArray (
+    /**
+     * Build the component array for a configuration
+     */
+    private function buildComponentArray(
         IsoConfiguration $config,
         int $dryerPosition,
         ProductRange $range,
@@ -212,9 +238,10 @@ class ConfigurationService
         $qasComponents = ['qas1', 'qas2', 'qas3', 'qas4', 'qas5', 'qas6', 'qas7', 'qas8', 'qas9'];
 
         foreach ($qasComponents as $index => $component) {
-            $position = $index +1;
+            $position = $index + 1;
 
             if ($position === $dryerPosition) {
+                // Replace with specific product range
                 $value = $range->product_range;
                 if ($dewpoint) {
                     $value .= " ({$dewpoint})";
@@ -229,10 +256,11 @@ class ConfigurationService
         }
 
         return $components;
-
     }
 
-    //Build base component array without dryer substitution
+    /**
+     * Build base component array without dryer substitution
+     */
     private function buildBaseComponentArray(IsoConfiguration $config): array
     {
         $components = [];
@@ -247,7 +275,4 @@ class ConfigurationService
 
         return $components;
     }
-
-
-
 }

@@ -46,29 +46,15 @@ export default function Results({ result }) {
                         <div className="p-6">
                             <h3 className="font-semibold text-lg mb-3">Your Input</h3>
                             <div className="grid grid-cols-2 gap-4 text-sm">
-                                {result.input.mode === 'industry' && (
-                                    <>
-                                        <div>
-                                            <span className="font-medium">Industry:</span> {result.input.industry}
-                                        </div>
-                                        <div>
-                                            <span className="font-medium">Application:</span> {result.input.application}
-                                        </div>
-                                    </>
-                                )}
-                                {result.input.mode === 'iso' && (
-                                    <>
-                                        <div>
-                                            <span className="font-medium">Particulate Class:</span> {result.input.particulate_class}
-                                        </div>
-                                        <div>
-                                            <span className="font-medium">Water Class:</span> {result.input.water_class}
-                                        </div>
-                                        <div>
-                                            <span className="font-medium">Oil Class:</span> {result.input.oil_class}
-                                        </div>
-                                    </>
-                                )}
+                                <div>
+                                    <span className="font-medium">Particulate Class:</span> {result.input.particulate_class}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Water Class:</span> {result.input.water_class}
+                                </div>
+                                <div>
+                                    <span className="font-medium">Oil Class:</span> {result.input.oil_class}
+                                </div>
                                 <div>
                                     <span className="font-medium">ISO Class:</span> {result.input.iso_class_display}
                                 </div>
