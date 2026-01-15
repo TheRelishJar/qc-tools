@@ -6,25 +6,23 @@ use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
-    /**
-     * Run the migrations.
-     */
     public function up(): void
     {
         Schema::create('products', function (Blueprint $table) {
             $table->id();
-            $table->string('code')->unique(); // e.g., "QCMD", "QWS", "QAF"
-            $table->string('name'); // Full product name
-            $table->text('description');
-            $table->string('category')->nullable(); // e.g., "dryer", "filter", "separator", "tank"
-            $table->string('image_path')->nullable(); // Path to product image
+            $table->string('code');
+            $table->string('flow_range')->nullable();
+            $table->string('name');
+            $table->text('description')->nullable();
+            $table->text('refrigerant_dryer_note')->nullable();
+            $table->text('desiccant_dryer_note')->nullable();
+            $table->text('qaf_note')->nullable();
+            $table->string('category')->nullable();
+            $table->string('image_path')->nullable();
             $table->timestamps();
         });
     }
 
-    /**
-     * Reverse the migrations.
-     */
     public function down(): void
     {
         Schema::dropIfExists('products');

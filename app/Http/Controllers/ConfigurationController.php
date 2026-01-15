@@ -6,6 +6,7 @@ use Illuminate\Http\Request;
 use App\Services\ConfigurationService;
 use App\Models\Industry;
 use App\Models\IsoPurityLevel;
+use App\Models\Product;
 use App\Helpers\IsoHelper;
 use Inertia\Inertia;
 
@@ -23,6 +24,7 @@ class ConfigurationController extends Controller
         return Inertia::render('ConfigurationTool/Index', [
             'industries' => Industry::orderBy('name')->get(),
             'purityLevels' => $this->getPurityLevelsGrouped(),
+            'productDescriptions' => $this->getProductDescriptions(),
         ]);
     }
 
@@ -104,5 +106,36 @@ class ConfigurationController extends Controller
                 ];
             })->values(),
         ];
+    }
+
+    /**
+     * Get product descriptions with smart flow range matching
+     */
+    private function getProductDescriptions()
+    {
+        $products = Product::all();
+        $lookup = [];
+
+        foreach ($products as $product) {
+            // Build lookup key based on whether product has a flow_range
+            if ($product->flow_range) {
+                // For products with flow ranges (like QCMD), use "CODE RANGE" as key
+                // e.g., "QCMD 4-11", "QCMD 12-64"
+                $key = $product->code . ' ' . $product->flow_range;
+            } else {
+                // For products without flow ranges, just use the code
+                // e.g., "QHD", "QWS", "Wet tank"
+                $key = $product->code;
+            }
+
+            $lookup[$key] = [
+                'description' => $product->description,
+                'refrigerant_dryer_note' => $product->refrigerant_dryer_note,
+                'desiccant_dryer_note' => $product->desiccant_dryer_note,
+                'qaf_note' => $product->qaf_note,
+            ];
+        }
+
+        return $lookup;
     }
 }

@@ -81,12 +81,23 @@ class ConfigurationService
                 'configurations' => [
                     [
                         'dryer_type' => 'N/A',
-                        'product_range' => 'No dryer required',
-                        'flow_range' => 'N/A',
-                        'min_flow' => null,
-                        'max_flow' => null,
+                        'dewpoint' => null,
+                        'configuration_name' => 'No Dryer Required',
+                        'flow_options' => [
+                            [
+                                'product_range' => 'No dryer required',
+                                'flow_range' => 'N/A',
+                                'min_flow' => null,
+                                'max_flow' => null,
+                            ]
+                        ],
+                        'component_configurations' => [
+                            [
+                                'components' => $this->buildBaseComponentArray($isoConfig),
+                                'product_range_name' => null,
+                            ]
+                        ],
                         'compressor' => $isoConfig->compressor,
-                        'components' => $this->buildBaseComponentArray($isoConfig),
                         'iso_class' => $isoClass,
                     ]
                 ],
@@ -99,30 +110,66 @@ class ConfigurationService
         // Step 5: Extract dewpoint from dryer string
         $dewpoint = $this->extractDewpoint($dryerInfo['raw']);
 
-        // Step 6: For each dryer option, find compatible product ranges
+        // Step 6: Group product ranges by dryer type
         $configurations = [];
 
         foreach ($dryerOptions as $dryerOption) {
             $dryerType = $this->extractDryerType($dryerOption);
 
-            // Find product ranges for this dryer type
-            $productRanges = $this->findProductRanges($waterClass, $dryerType, $dewpoint, $flow);
+            // Find ALL product ranges for this dryer type (don't filter by flow yet)
+            $productRanges = $this->findProductRanges($waterClass, $dryerType, $dewpoint, null);
 
+            if ($productRanges->isEmpty()) {
+                continue;
+            }
+
+            // Sort by min_flow ascending
+            $productRanges = $productRanges->sortBy('min_flow');
+
+            // Build flow_options array
+            $flowOptions = [];
             foreach ($productRanges as $range) {
-                // Build the configuration with this specific product range
-                $components = $this->buildComponentArray($isoConfig, $dryerInfo['position'], $range, $dewpoint);
+                // If user specified a flow, only include ranges that match
+                if ($flow !== null) {
+                    if ($flow < $range->min_flow || $flow > $range->max_flow) {
+                        continue;
+                    }
+                }
 
-                $configurations[] = [
-                    'dryer_type' => $dryerType,
+                $flowOptions[] = [
                     'product_range' => $range->product_range,
                     'flow_range' => "{$range->min_flow}-{$range->max_flow}",
                     'min_flow' => $range->min_flow,
                     'max_flow' => $range->max_flow,
-                    'compressor' => $isoConfig->compressor,
-                    'components' => $components,
-                    'iso_class' => $isoClass,
                 ];
             }
+
+            // Skip this dryer type if no flow options match
+            if (empty($flowOptions)) {
+                continue;
+            }
+
+            // Build components array for EACH flow option (they may have different product names)
+            $configurationsWithComponents = [];
+            foreach ($flowOptions as $option) {
+                $range = $productRanges->firstWhere('product_range', $option['product_range']);
+                $components = $this->buildComponentArray($isoConfig, $dryerInfo['position'], $range, $dewpoint);
+                $configurationsWithComponents[] = [
+                    'components' => $components,
+                    'product_range_name' => $range->product_range, // Full product name for description lookup
+                ];
+            }
+
+            // Create one configuration per dryer type
+            $configurations[] = [
+                'dryer_type' => $dryerType,
+                'dewpoint' => $dewpoint,
+                'configuration_name' => $dewpoint ? "{$dryerType} ({$dewpoint})" : $dryerType,
+                'flow_options' => $flowOptions,
+                'component_configurations' => $configurationsWithComponents, // Array of component arrays
+                'compressor' => $isoConfig->compressor,
+                'iso_class' => $isoClass,
+            ];
         }
 
         return [
@@ -241,12 +288,8 @@ class ConfigurationService
             $position = $index + 1;
 
             if ($position === $dryerPosition) {
-                // Replace with specific product range
-                $value = $range->product_range;
-                if ($dewpoint) {
-                    $value .= " ({$dewpoint})";
-                }
-                $components[] = $value;
+                // Use the full product range name (e.g., "QCMD 4-11", "QCMD >= 12")
+                $components[] = $range->product_range;
             } else {
                 $value = $config->$component;
                 if ($value) {

@@ -2,11 +2,45 @@ import React, { useState, useEffect } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 
 // Results View Component
-function ResultsView({ result, onBack }) {
+function ResultsView({ result, onBack, appliedPreset, presetModified, purityLevels, productDescriptions }) {
     const [currentIndex, setCurrentIndex] = useState(0);
+    const [selectedFlowIndexes, setSelectedFlowIndexes] = useState({});
+    const [modalProduct, setModalProduct] = useState(null);
     
     const hasConfigurations = result.configurations && result.configurations.length > 0;
     const currentConfig = hasConfigurations ? result.configurations[currentIndex] : null;
+
+    // Initialize selected flow indexes (default to 0 for each config)
+    useEffect(() => {
+        if (hasConfigurations) {
+            const initialIndexes = {};
+            result.configurations.forEach((config, idx) => {
+                initialIndexes[idx] = 0;
+            });
+            setSelectedFlowIndexes(initialIndexes);
+        }
+    }, [result]);
+
+    /**
+     * Get product info with smart matching
+     * Tries exact match first (e.g., "QCMD 12-64"), then falls back to base code (e.g., "QCMD")
+     */
+    const getProductDescription = (componentName) => {
+        // Try exact match first
+        if (productDescriptions[componentName]) {
+            return productDescriptions[componentName];
+        }
+        
+        // Fall back to base code (remove flow range suffix)
+        // "QCMD 12-64" -> "QCMD"
+        // "QHD 230-635" -> "QHD"
+        const baseCode = componentName.split(' ')[0];
+        if (productDescriptions[baseCode]) {
+            return productDescriptions[baseCode];
+        }
+        
+        return null;
+    };
 
     const handlePrevious = () => {
         if (currentIndex > 0) {
@@ -18,6 +52,28 @@ function ResultsView({ result, onBack }) {
         if (currentIndex < result.configurations.length - 1) {
             setCurrentIndex(currentIndex + 1);
         }
+    };
+
+    const handleFlowOptionChange = (e) => {
+        setSelectedFlowIndexes({
+            ...selectedFlowIndexes,
+            [currentIndex]: parseInt(e.target.value)
+        });
+    };
+
+    const selectedFlowOption = currentConfig && currentConfig.flow_options 
+        ? currentConfig.flow_options[selectedFlowIndexes[currentIndex] || 0]
+        : null;
+
+    const selectedComponentConfig = currentConfig && currentConfig.component_configurations
+        ? currentConfig.component_configurations[selectedFlowIndexes[currentIndex] || 0]
+        : null;
+
+    // Get purity description for each class
+    const getPurityDescription = (type, classValue) => {
+        if (!classValue) return '';
+        const level = purityLevels[type]?.find(p => String(p.level) === String(classValue));
+        return level ? level.description : '';
     };
 
     return (
@@ -33,20 +89,47 @@ function ResultsView({ result, onBack }) {
             {/* Input Summary */}
             <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div className="p-6">
-                    <h3 className="font-semibold text-lg mb-3">Your Input</h3>
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div>
-                            <span className="font-medium">Particulate Class:</span> {result.input.particulate_class}
-                        </div>
-                        <div>
-                            <span className="font-medium">Water Class:</span> {result.input.water_class}
-                        </div>
-                        <div>
-                            <span className="font-medium">Oil Class:</span> {result.input.oil_class}
-                        </div>
-                        <div>
-                            <span className="font-medium">ISO Class:</span> {result.input.iso_class_display}
-                        </div>
+                    <h3 className="font-semibold text-lg mb-4">Your Input</h3>
+
+                    {/* ISO Configuration as Table */}
+                    <div className="mb-4">
+                        <table className="w-full border-collapse">
+                            <thead>
+                                <tr className="border-b-2 border-gray-300">
+                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-gray-300">Particulate</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-gray-300">Water</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm">Oil</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <tr className="border-b border-gray-200">
+                                    <td className="py-2 px-3 font-medium text-center border-r border-gray-300">{result.input.particulate_class}</td>
+                                    <td className="py-2 px-3 font-medium text-center border-r border-gray-300">{result.input.water_class}</td>
+                                    <td className="py-2 px-3 font-medium text-center">{result.input.oil_class}</td>
+                                </tr>
+                                <tr>
+                                    <td className="py-2 px-3 text-sm text-gray-600 text-center border-r border-gray-300 whitespace-pre-line">
+                                        {getPurityDescription('particle', result.input.particulate_class)}
+                                    </td>
+                                    <td className="py-2 px-3 text-sm text-gray-600 text-center border-r border-gray-300">
+                                        {getPurityDescription('water', result.input.water_class)}
+                                    </td>
+                                    <td className="py-2 px-3 text-sm text-gray-600 text-center">
+                                        {getPurityDescription('oil', result.input.oil_class)}
+                                    </td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    {/* Preset and Flow */}
+                    <div className="text-sm space-y-1">
+                        {appliedPreset && (
+                            <div>
+                                <span className="font-medium">Industry/Application:</span> {appliedPreset.industry}: {appliedPreset.application}
+                                {presetModified && <span className="text-gray-500 italic ml-2">(modified)</span>}
+                            </div>
+                        )}
                         <div>
                             <span className="font-medium">Flow:</span> {result.input.flow ? `${result.input.flow} CFM` : 'All Ranges'}
                         </div>
@@ -95,45 +178,75 @@ function ResultsView({ result, onBack }) {
                         </div>
                     </div>
 
-                    {currentConfig && (
+                    {currentConfig && selectedFlowOption && selectedComponentConfig && (
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-6">
                                 <div className="mb-6">
+                                    {/* Product Name - Shows specific product range */}
                                     <h3 className="text-xl font-semibold mb-2">
-                                        {currentConfig.product_range}
+                                        {selectedFlowOption.product_range}
+                                        {currentConfig.dewpoint && ` (${currentConfig.dewpoint})`}
                                     </h3>
-                                    <div className="text-sm text-gray-600 space-y-1">
-                                        <div>
-                                            <span className="font-medium">Dryer Type:</span> {currentConfig.dryer_type}
-                                        </div>
-                                        <div>
-                                            <span className="font-medium">Flow Range:</span> {currentConfig.flow_range} CFM
-                                        </div>
-                                        <div>
-                                            <span className="font-medium">Compressor:</span> {currentConfig.compressor}
-                                        </div>
+                                    
+                                    {/* Flow Range - Dropdown if multiple options, text if single */}
+                                    <div className="text-sm text-gray-600">
+                                        <span className="font-medium">Flow Range:</span>{' '}
+                                        {currentConfig.flow_options.length > 1 ? (
+                                            <select
+                                                value={selectedFlowIndexes[currentIndex] || 0}
+                                                onChange={handleFlowOptionChange}
+                                                className="border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                            >
+                                                {currentConfig.flow_options.map((option, idx) => (
+                                                    <option key={idx} value={idx}>
+                                                        {option.flow_range} CFM
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        ) : (
+                                            <span>{selectedFlowOption.flow_range} CFM</span>
+                                        )}
                                     </div>
                                 </div>
 
                                 <div>
                                     <h4 className="font-medium text-sm text-gray-700 mb-3">Component Flow:</h4>
                                     <div className="flex items-center gap-3 overflow-x-auto pb-4">
-                                        <div className="flex-shrink-0 bg-blue-100 border-2 border-blue-500 rounded-lg px-4 py-3 text-center min-w-[120px]">
-                                            <div className="font-semibold text-blue-900">
+                                        {/* Compressor */}
+                                        <div 
+                                            onClick={() => {
+                                                const productInfo = getProductDescription(currentConfig.compressor);
+                                                if (productInfo) setModalProduct({ 
+                                                    name: currentConfig.compressor, 
+                                                    ...productInfo 
+                                                });
+                                            }}
+                                            className={`flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px] ${getProductDescription(currentConfig.compressor) ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors' : ''}`}
+                                        >
+                                            <div className="font-medium text-gray-900">
                                                 {currentConfig.compressor}
                                             </div>
                                         </div>
 
                                         <div className="flex-shrink-0 text-gray-400 text-2xl">→</div>
 
-                                        {currentConfig.components.map((component, index) => (
+                                        {selectedComponentConfig.components.map((component, index) => (
                                             <React.Fragment key={index}>
-                                                <div className="flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px]">
+                                                <div 
+                                                    onClick={() => {
+                                                        const productInfo = getProductDescription(component);
+                                                        if (productInfo) setModalProduct({ 
+                                                            name: component, 
+                                                            ...productInfo 
+                                                        });
+                                                    }}
+                                                    className={`flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px] ${getProductDescription(component) ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors' : ''}`}
+                                                >
                                                     <div className="font-medium text-gray-900 text-sm">
                                                         {component}
                                                     </div>
                                                 </div>
-                                                {index < currentConfig.components.length - 1 && (
+                                                {index < selectedComponentConfig.components.length - 1 && (
                                                     <div className="flex-shrink-0 text-gray-400 text-2xl">→</div>
                                                 )}
                                             </React.Fragment>
@@ -151,11 +264,59 @@ function ResultsView({ result, onBack }) {
                     )}
                 </div>
             )}
+
+            {/* Product Description Modal */}
+            {modalProduct && (
+                <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setModalProduct(null)}>
+                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6" onClick={(e) => e.stopPropagation()}>
+                        <div className="flex justify-between items-start mb-4">
+                            <h3 className="text-xl font-semibold text-gray-900">{modalProduct.name}</h3>
+                            <button
+                                onClick={() => setModalProduct(null)}
+                                className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none"
+                            >
+                                ×
+                            </button>
+                        </div>
+                        
+                        {/* Main Description */}
+                        {modalProduct.description && (
+                            <div className="text-gray-700 whitespace-pre-line mb-4">
+                                {modalProduct.description}
+                            </div>
+                        )}
+
+                        {/* Notes Section */}
+                        <div className="space-y-3">
+                            {modalProduct.refrigerant_dryer_note && (
+                                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
+                                    <p className="text-sm font-medium text-blue-900 mb-1">Refrigerant Dryer Note:</p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-line">{modalProduct.refrigerant_dryer_note}</p>
+                                </div>
+                            )}
+
+                            {modalProduct.desiccant_dryer_note && (
+                                <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
+                                    <p className="text-sm font-medium text-purple-900 mb-1">Desiccant Dryer Note:</p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-line">{modalProduct.desiccant_dryer_note}</p>
+                                </div>
+                            )}
+
+                            {modalProduct.qaf_note && (
+                                <div className="bg-green-50 border border-green-200 rounded-md p-3">
+                                    <p className="text-sm font-medium text-green-900 mb-1">QAF Note:</p>
+                                    <p className="text-sm text-gray-700 whitespace-pre-line">{modalProduct.qaf_note}</p>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                </div>
+            )}
         </div>
     );
 }
 
-export default function Index({ industries, purityLevels }) {
+export default function Index({ industries, purityLevels, productDescriptions }) {
     const [applications, setApplications] = useState([]);
     const [selectedApplication, setSelectedApplication] = useState(null);
     const [presetOpen, setPresetOpen] = useState(false);
@@ -166,6 +327,8 @@ export default function Index({ industries, purityLevels }) {
     });
     const [showResults, setShowResults] = useState(false);
     const [resultData, setResultData] = useState(null);
+    const [appliedPreset, setAppliedPreset] = useState(null);
+    const [presetModified, setPresetModified] = useState(false);
     
     const { data, setData, post, processing, errors } = useForm({
         particulate_class: '',
@@ -206,7 +369,10 @@ export default function Index({ industries, purityLevels }) {
     const handleClassChange = (type, value) => {
         setData(type, value);
         
-        // Highlight the synced purity dropdown briefly
+        if (appliedPreset) {
+            setPresetModified(true);
+        }
+        
         const fieldMap = {
             'particulate_class': 'particulate',
             'water_class': 'water',
@@ -224,7 +390,6 @@ export default function Index({ industries, purityLevels }) {
 
     // Sync dropdowns: when purity changes, update class number
     const handlePurityChange = (type, purityDescription) => {
-        // Map field names correctly
         const fieldMap = {
             'particulate_class': 'particle',
             'water_class': 'water',
@@ -233,30 +398,30 @@ export default function Index({ industries, purityLevels }) {
         
         const field = fieldMap[type];
         
-        // Safety check
         if (!purityLevels[field] || !purityDescription) {
             return;
         }
         
-        // Compare against single-line version since that's what we display
         const level = purityLevels[field].find(p => {
             if (!p.description) return false;
             const singleLine = p.description.replace(/\n/g, ' ');
-            const matches = singleLine === purityDescription;
-            return matches;
+            return singleLine === purityDescription;
         });
         
         if (level) {
             setData(type, String(level.level));
             
-            // Highlight the synced class dropdown briefly
-            const fieldMap = {
+            if (appliedPreset) {
+                setPresetModified(true);
+            }
+            
+            const fieldMap2 = {
                 'particulate_class': 'particulate',
                 'water_class': 'water',
                 'oil_class': 'oil'
             };
             
-            const fieldName = fieldMap[type];
+            const fieldName = fieldMap2[type];
             if (fieldName) {
                 setHighlightedFields(prev => ({ ...prev, [fieldName]: true }));
                 setTimeout(() => {
@@ -276,14 +441,19 @@ export default function Index({ industries, purityLevels }) {
                 oil_class: selectedApplication.oil_class,
             });
 
-            // Trigger highlight animation
+            const industry = industries.find(i => i.id === parseInt(data.preset_industry_id));
+            setAppliedPreset({
+                industry: industry?.name,
+                application: selectedApplication.name
+            });
+            setPresetModified(false);
+
             setHighlightedFields({
                 particulate: true,
                 water: true,
                 oil: true
             });
 
-            // Remove highlight after animation
             setTimeout(() => {
                 setHighlightedFields({
                     particulate: false,
@@ -297,7 +467,6 @@ export default function Index({ industries, purityLevels }) {
     const handleSubmit = (e) => {
         e.preventDefault();
         
-        // Use fetch instead of Inertia to stay on same page
         fetch('/configuration/generate', {
             method: 'POST',
             headers: {
@@ -340,11 +509,9 @@ export default function Index({ industries, purityLevels }) {
         setShowResults(false);
     };
 
-    // Get current purity description for a class (single-line version)
     const getPurityDescription = (type, classValue) => {
         if (!classValue) return '';
         
-        // Map field names correctly
         const fieldMap = {
             'particulate_class': 'particle',
             'water_class': 'water',
@@ -353,15 +520,13 @@ export default function Index({ industries, purityLevels }) {
         
         const field = fieldMap[type];
         
-        // Safety check
         if (!purityLevels[field]) return '';
         
         const level = purityLevels[field].find(p => String(p.level) === String(classValue));
         
         if (!level || !level.description) return '';
         
-        const result = level.description.replace(/\n/g, ' ');
-        return result;
+        return level.description.replace(/\n/g, ' ');
     };
 
     return (
@@ -379,7 +544,6 @@ export default function Index({ industries, purityLevels }) {
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     {!showResults ? (
-                        // Input Form
                         <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                             <div className="p-6">
                             <form onSubmit={handleSubmit} className="space-y-6">
@@ -401,7 +565,6 @@ export default function Index({ industries, purityLevels }) {
 
                                     {presetOpen && (
                                         <div className="p-4 space-y-4 border-t">
-                                            {/* Industry Dropdown */}
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Industry
@@ -420,7 +583,6 @@ export default function Index({ industries, purityLevels }) {
                                                 </select>
                                             </div>
 
-                                            {/* Application Dropdown */}
                                             <div>
                                                 <label className="block text-sm font-medium text-gray-700 mb-2">
                                                     Application
@@ -442,7 +604,6 @@ export default function Index({ industries, purityLevels }) {
                                                 </select>
                                             </div>
 
-                                            {/* Application Description */}
                                             {selectedApplication && selectedApplication.description && (
                                                 <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
                                                     <p className="text-sm text-gray-700">
@@ -451,7 +612,6 @@ export default function Index({ industries, purityLevels }) {
                                                 </div>
                                             )}
 
-                                            {/* Apply Button */}
                                             <button
                                                 type="button"
                                                 onClick={handleApplyPreset}
@@ -474,7 +634,6 @@ export default function Index({ industries, purityLevels }) {
                                             Particulate Class
                                         </label>
                                         <div className="grid grid-cols-2 gap-3">
-                                            {/* Class Number Dropdown */}
                                             <select
                                                 value={data.particulate_class}
                                                 onChange={(e) => handleClassChange('particulate_class', e.target.value)}
@@ -489,7 +648,6 @@ export default function Index({ industries, purityLevels }) {
                                                 ))}
                                             </select>
 
-                                            {/* Purity Description Dropdown */}
                                             <select
                                                 value={getPurityDescription('particulate_class', data.particulate_class)}
                                                 onChange={(e) => handlePurityChange('particulate_class', e.target.value)}
@@ -518,7 +676,6 @@ export default function Index({ industries, purityLevels }) {
                                             Water Class
                                         </label>
                                         <div className="grid grid-cols-2 gap-3">
-                                            {/* Class Number Dropdown */}
                                             <select
                                                 value={data.water_class}
                                                 onChange={(e) => handleClassChange('water_class', e.target.value)}
@@ -533,7 +690,6 @@ export default function Index({ industries, purityLevels }) {
                                                 ))}
                                             </select>
 
-                                            {/* Purity Description Dropdown */}
                                             <select
                                                 value={getPurityDescription('water_class', data.water_class)}
                                                 onChange={(e) => handlePurityChange('water_class', e.target.value)}
@@ -562,7 +718,6 @@ export default function Index({ industries, purityLevels }) {
                                             Total Oil Class
                                         </label>
                                         <div className="grid grid-cols-2 gap-3">
-                                            {/* Class Number Dropdown */}
                                             <select
                                                 value={data.oil_class}
                                                 onChange={(e) => handleClassChange('oil_class', e.target.value)}
@@ -577,7 +732,6 @@ export default function Index({ industries, purityLevels }) {
                                                 ))}
                                             </select>
 
-                                            {/* Purity Description Dropdown */}
                                             <select
                                                 value={getPurityDescription('oil_class', data.oil_class)}
                                                 onChange={(e) => handlePurityChange('oil_class', e.target.value)}
@@ -620,7 +774,6 @@ export default function Index({ industries, purityLevels }) {
                                     </div>
                                 </div>
 
-                                {/* Submit Button */}
                                 <button
                                     type="submit"
                                     disabled={processing}
@@ -632,8 +785,14 @@ export default function Index({ industries, purityLevels }) {
                         </div>
                     </div>
                     ) : (
-                        // Results View
-                        <ResultsView result={resultData} onBack={handleBackToInput} />
+                        <ResultsView 
+                            result={resultData} 
+                            onBack={handleBackToInput}
+                            appliedPreset={appliedPreset}
+                            presetModified={presetModified}
+                            purityLevels={purityLevels}
+                            productDescriptions={productDescriptions}
+                        />
                     )}
                 </div>
             </div>

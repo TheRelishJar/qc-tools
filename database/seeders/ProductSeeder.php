@@ -3,73 +3,73 @@
 namespace Database\Seeders;
 
 use Illuminate\Database\Seeder;
-use App\Models\Product;
-use Maatwebsite\Excel\Facades\Excel;
+use Illuminate\Support\Facades\DB;
+use PhpOffice\PhpSpreadsheet\IOFactory;
 
 class ProductSeeder extends Seeder
 {
-    /**
-     * Run the database seeds.
-     */
     public function run(): void
     {
         $filePath = storage_path('app/QC_ISO_Tool_Clean_Data.xlsx');
         
-        // Load the Excel file
-        $data = Excel::toArray([], $filePath);
+        if (!file_exists($filePath)) {
+            $this->command->error("Excel file not found at: {$filePath}");
+            return;
+        }
+
+        $spreadsheet = IOFactory::load($filePath);
+        $sheet = $spreadsheet->getSheetByName('Product Descriptions');
         
-        // Get the "Product Descriptions" sheet (index 4)
-        $productSheet = $data[4];
+        if (!$sheet) {
+            $this->command->error("Sheet 'Product Descriptions' not found");
+            return;
+        }
+
+        $rows = $sheet->toArray();
         
-        // Skip header row and process products
-        foreach (array_slice($productSheet, 1) as $row) {
-            $code = $row[0];
-            $description = $row[1];
+        // Skip header row
+        array_shift($rows);
+
+        foreach ($rows as $cells) {
+            // Column A (index 0) = Product Code
+            // Column B (index 1) = Flow Range
+            // Column C (index 2) = Description
+            // Column D (index 3) = Refrigerant Dryer Note
+            // Column E (index 4) = Desiccant Dryer Note
+            // Column F (index 5) = QAF Note
             
-            if (!$code) {
+            $productCode = trim($cells[0] ?? '');
+            
+            // Skip empty rows
+            if (empty($productCode)) {
                 continue;
             }
             
-            // Determine category based on product code
-            $category = $this->determineCategory($code);
-            
-            Product::create([
-                'code' => $code,
-                'name' => $code, // Using code as name for now
-                'description' => $description,
-                'category' => $category,
+            DB::table('products')->insert([
+                'code' => $productCode,
+                'flow_range' => $cells[1] ?? null, // Column B - Flow Range
+                'name' => $productCode,
+                'description' => $cells[2] ?? null, // Column C
+                'refrigerant_dryer_note' => $cells[3] ?? null, // Column D
+                'desiccant_dryer_note' => $cells[4] ?? null, // Column E
+                'qaf_note' => $cells[5] ?? null, // Column F
+                'category' => $this->guessCategory($productCode),
                 'image_path' => null,
+                'created_at' => now(),
+                'updated_at' => now(),
             ]);
         }
-        
-        $this->command->info('Products seeded successfully!');
+
+        $count = DB::table('products')->count();
+        $this->command->info("Seeded {$count} products");
     }
-    
-    /**
-     * Determine product category based on code
-     */
-    private function determineCategory(string $code): string
+
+    private function guessCategory(string $code): string
     {
-        // Dryers
-        if (in_array($code, ['QCMD', 'QMD', 'QHD', 'QHP', 'QBP', 'QED', 'QPVS', 'COOL', 'QPNC'])) {
-            return 'dryer';
-        }
-        
-        // Filters
-        if (in_array($code, ['QMF', 'QCF', 'QAF', 'QSF', 'QDF'])) {
-            return 'filter';
-        }
-        
-        // Separators
-        if (in_array($code, ['QWS'])) {
-            return 'separator';
-        }
-        
-        // Tanks
-        if (in_array($code, ['Wet tank', 'Dry tank'])) {
-            return 'tank';
-        }
-        
+        if (str_contains($code, 'tank')) return 'tank';
+        if (in_array($code, ['QWS'])) return 'separator';
+        if (in_array($code, ['QMF', 'QCF', 'QAF', 'QSF', 'QDF'])) return 'filter';
+        if (in_array($code, ['COOL', 'QPNC', 'QED', 'QPVS', 'QMD', 'QHD', 'QHP', 'QBP', 'QCMD'])) return 'dryer';
         return 'other';
     }
 }
