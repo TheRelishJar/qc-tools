@@ -38,7 +38,8 @@ Route::get('/configuration/applications/{industry}', [ConfigurationController::c
 Route::post('/configuration/generate', [ConfigurationController::class, 'generate'])
     ->name('configuration.generate');
 
-
+Route::post('/configuration/export-pdf', [ConfigurationController::class, 'exportPdf'])
+    ->name('configuration.export-pdf');
 
 
 

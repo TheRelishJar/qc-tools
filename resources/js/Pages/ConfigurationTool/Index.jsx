@@ -77,6 +77,47 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
         return level ? level.description : '';
     };
 
+    const handleExportPdf = () => {
+        // Prepare data for PDF export
+        const exportData = {
+            particulate_class: result.input.particulate_class,
+            water_class: result.input.water_class,
+            oil_class: result.input.oil_class,
+            flow: result.input.flow,
+            config_index: currentIndex,
+            flow_index: selectedFlowIndexes[currentIndex] || 0,
+            preset: appliedPreset ? `${appliedPreset.industry}: ${appliedPreset.application}${presetModified ? ' (modified)' : ''}` : null,
+        };
+
+        // Create form and submit to trigger download
+        const form = document.createElement('form');
+        form.method = 'POST';
+        form.action = '/configuration/export-pdf';
+        form.target = '_blank';
+
+        // Add CSRF token
+        const csrfInput = document.createElement('input');
+        csrfInput.type = 'hidden';
+        csrfInput.name = '_token';
+        csrfInput.value = document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+        form.appendChild(csrfInput);
+
+        // Add all data fields
+        Object.keys(exportData).forEach(key => {
+            if (exportData[key] !== null && exportData[key] !== undefined) {
+                const input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = key;
+                input.value = exportData[key];
+                form.appendChild(input);
+            }
+        });
+
+        document.body.appendChild(form);
+        form.submit();
+        document.body.removeChild(form);
+    };
+
     return (
         <div className="space-y-6">
             {/* Back Button */}
@@ -290,7 +331,10 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
 
                             <div className="mt-6 pt-6 border-t">
                                 {reviewMode ? (
-                                    <button className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 font-medium">
+                                    <button 
+                                        onClick={handleExportPdf}
+                                        className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 font-medium"
+                                    >
                                         Export to PDF
                                     </button>
                                 ) : (
