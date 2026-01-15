@@ -187,34 +187,48 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
 
                             <div>
                                 <h4 className="font-medium text-sm text-gray-700 mb-3">Component Flow:</h4>
-                                <div className="flex items-start gap-3 overflow-x-auto pb-4">
-                                    {/* Compressor */}
-                                    <div className="flex flex-col items-center gap-2">
-                                        <div 
-                                            onClick={() => {
-                                                const productInfo = getProductDescription(currentConfig.compressor);
-                                                if (productInfo) setModalProduct({ 
-                                                    name: currentConfig.compressor, 
-                                                    ...productInfo 
-                                                });
-                                            }}
-                                            className={`flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px] ${getProductDescription(currentConfig.compressor) ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors' : ''}`}
-                                        >
-                                            <div className="font-medium text-gray-900">
-                                                {currentConfig.compressor}
+                                <div className="relative">
+                                    {/* Connecting line behind components */}
+                                    <div className="absolute top-[60px] left-[60px] right-[60px] h-0.5 bg-gray-400 z-0"></div>
+                                    
+                                    <div className="flex items-start gap-3 overflow-x-auto pb-4 relative z-10">
+                                        {/* Compressor */}
+                                        <div className="flex flex-col items-center gap-2">
+                                            <div 
+                                                onClick={() => {
+                                                    const productInfo = getProductDescription(currentConfig.compressor);
+                                                    if (productInfo) setModalProduct({ 
+                                                        name: currentConfig.compressor, 
+                                                        ...productInfo 
+                                                    });
+                                                }}
+                                                className={`flex-shrink-0 flex flex-col items-center gap-2 ${getProductDescription(currentConfig.compressor) ? 'cursor-pointer' : ''}`}
+                                            >
+                                                {/* Image */}
+                                                <div className="w-[120px] h-[120px] flex items-center justify-center bg-white border-2 border-gray-300 rounded-lg hover:border-blue-400 transition-colors">
+                                                    {getProductDescription(currentConfig.compressor)?.image_path ? (
+                                                        <img 
+                                                            src={getProductDescription(currentConfig.compressor).image_path} 
+                                                            alt={currentConfig.compressor}
+                                                            className="max-w-full max-h-full object-contain p-2"
+                                                        />
+                                                    ) : (
+                                                        <div className="text-gray-400 text-xs text-center px-2">No Image</div>
+                                                    )}
+                                                </div>
+                                                {/* Name */}
+                                                <div className="font-medium text-gray-900 text-sm text-center">
+                                                    {currentConfig.compressor}
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
 
-                                    <div className="flex-shrink-0 text-gray-400 text-2xl pt-3">→</div>
-
-                                    {selectedComponentConfig.components.map((component, index) => {
-                                        // Determine if this is the dryer component by checking if it matches the product_range
-                                        const isDryer = selectedFlowOption && component.includes(selectedFlowOption.product_range.split(' ')[0]);
-                                        
-                                        return (
-                                            <React.Fragment key={index}>
-                                                <div className="flex flex-col items-center gap-2">
+                                        {selectedComponentConfig.components.map((component, index) => {
+                                            // Determine if this is the dryer component by checking if it matches the product_range
+                                            const isDryer = selectedFlowOption && component.includes(selectedFlowOption.product_range.split(' ')[0]);
+                                            
+                                            return (
+                                                <div key={index} className="flex flex-col items-center gap-2">
                                                     <div 
                                                         onClick={() => {
                                                             const productInfo = getProductDescription(component);
@@ -223,9 +237,22 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                                                 ...productInfo 
                                                             });
                                                         }}
-                                                        className={`flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px] ${getProductDescription(component) ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors' : ''}`}
+                                                        className={`flex-shrink-0 flex flex-col items-center gap-2 ${getProductDescription(component) ? 'cursor-pointer' : ''}`}
                                                     >
-                                                        <div className="font-medium text-gray-900 text-sm">
+                                                        {/* Image */}
+                                                        <div className="w-[120px] h-[120px] flex items-center justify-center bg-white border-2 border-gray-300 rounded-lg hover:border-blue-400 transition-colors">
+                                                            {getProductDescription(component)?.image_path ? (
+                                                                <img 
+                                                                    src={getProductDescription(component).image_path} 
+                                                                    alt={component}
+                                                                    className="max-w-full max-h-full object-contain p-2"
+                                                                />
+                                                            ) : (
+                                                                <div className="text-gray-400 text-xs text-center px-2">No Image</div>
+                                                            )}
+                                                        </div>
+                                                        {/* Name */}
+                                                        <div className="font-medium text-gray-900 text-sm text-center">
                                                             {component}
                                                         </div>
                                                     </div>
@@ -255,12 +282,9 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                                         </div>
                                                     )}
                                                 </div>
-                                                {index < selectedComponentConfig.components.length - 1 && (
-                                                    <div className="flex-shrink-0 text-gray-400 text-2xl pt-3">→</div>
-                                                )}
-                                            </React.Fragment>
-                                        );
-                                    })}
+                                            );
+                                        })}
+                                    </div>
                                 </div>
                             </div>
 
@@ -296,6 +320,17 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                 ×
                             </button>
                         </div>
+                        
+                        {/* Product Image */}
+                        {modalProduct.image_path && (
+                            <div className="mb-4 flex justify-center bg-gray-50 rounded-lg p-4">
+                                <img 
+                                    src={modalProduct.image_path} 
+                                    alt={modalProduct.name}
+                                    className="max-w-full max-h-64 object-contain"
+                                />
+                            </div>
+                        )}
                         
                         {/* Main Description */}
                         {modalProduct.description && (

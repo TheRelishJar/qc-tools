@@ -130,6 +130,7 @@ class ConfigurationController extends Controller
 
             $lookup[$key] = [
                 'description' => $product->description,
+                'image_path' => $product->image_path,
                 'refrigerant_dryer_note' => $product->refrigerant_dryer_note,
                 'desiccant_dryer_note' => $product->desiccant_dryer_note,
                 'qaf_note' => $product->qaf_note,
