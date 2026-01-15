@@ -6,6 +6,7 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedFlowIndexes, setSelectedFlowIndexes] = useState({});
     const [modalProduct, setModalProduct] = useState(null);
+    const [reviewMode, setReviewMode] = useState(false); // Track if in review mode
     
     const hasConfigurations = result.configurations && result.configurations.length > 0;
     const currentConfig = hasConfigurations ? result.configurations[currentIndex] : null;
@@ -80,17 +81,21 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
         <div className="space-y-6">
             {/* Back Button */}
             <button
-                onClick={onBack}
+                onClick={() => {
+                    if (reviewMode) {
+                        setReviewMode(false); // Go back to selection mode
+                    } else {
+                        onBack(); // Go back to input
+                    }
+                }}
                 className="text-blue-600 hover:text-blue-800 font-medium"
             >
-                ← Back to Input
+                ← {reviewMode ? 'Back to Selection' : 'Back to Input'}
             </button>
 
             {/* Input Summary */}
             <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                 <div className="p-6">
-                    <h3 className="font-semibold text-lg mb-4">Your Input</h3>
-
                     {/* ISO Configuration as Table */}
                     <div className="mb-4">
                         <table className="w-full border-collapse">
@@ -150,69 +155,41 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                     </div>
                 </div>
             ) : (
-                <div>
-                    <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg mb-4">
-                        <div className="p-4 flex justify-between items-center">
-                            <div className="text-sm text-gray-600">
-                                Showing configuration {currentIndex + 1} of {result.configurations.length}
-                            </div>
-                            
-                            {result.configurations.length > 1 && (
-                                <div className="flex gap-2">
-                                    <button
-                                        onClick={handlePrevious}
-                                        disabled={currentIndex === 0}
-                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                    >
-                                        ← Previous
-                                    </button>
-                                    <button
-                                        onClick={handleNext}
-                                        disabled={currentIndex === result.configurations.length - 1}
-                                        className="px-4 py-2 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed"
-                                    >
-                                        Next →
-                                    </button>
-                                </div>
-                            )}
-                        </div>
-                    </div>
-
+                <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
                     {currentConfig && selectedFlowOption && selectedComponentConfig && (
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
-                            <div className="p-6">
-                                <div className="mb-6">
-                                    {/* Product Name - Shows specific product range */}
-                                    <h3 className="text-xl font-semibold mb-2">
-                                        {selectedFlowOption.product_range}
-                                        {currentConfig.dewpoint && ` (${currentConfig.dewpoint})`}
-                                    </h3>
-                                    
-                                    {/* Flow Range - Dropdown if multiple options, text if single */}
-                                    <div className="text-sm text-gray-600">
-                                        <span className="font-medium">Flow Range:</span>{' '}
-                                        {currentConfig.flow_options.length > 1 ? (
-                                            <select
-                                                value={selectedFlowIndexes[currentIndex] || 0}
-                                                onChange={handleFlowOptionChange}
-                                                className="border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
-                                            >
-                                                {currentConfig.flow_options.map((option, idx) => (
-                                                    <option key={idx} value={idx}>
-                                                        {option.flow_range} CFM
-                                                    </option>
-                                                ))}
-                                            </select>
-                                        ) : (
-                                            <span>{selectedFlowOption.flow_range} CFM</span>
-                                        )}
-                                    </div>
+                        <div className="p-6">
+                            {/* Product Name and Flow Range Info */}
+                            <div className="mb-6">
+                                <h3 className="text-xl font-semibold mb-2">
+                                    {selectedFlowOption.product_range}
+                                    {currentConfig.dewpoint && ` (${currentConfig.dewpoint})`}
+                                </h3>
+                                
+                                <div className="text-sm text-gray-600">
+                                    <span className="font-medium">Flow Range:</span>{' '}
+                                    {!reviewMode && currentConfig.flow_options.length > 1 ? (
+                                        <select
+                                            value={selectedFlowIndexes[currentIndex] || 0}
+                                            onChange={handleFlowOptionChange}
+                                            className="border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                        >
+                                            {currentConfig.flow_options.map((option, idx) => (
+                                                <option key={idx} value={idx}>
+                                                    {option.flow_range} CFM
+                                                </option>
+                                            ))}
+                                        </select>
+                                    ) : (
+                                        <span>{selectedFlowOption.flow_range} CFM</span>
+                                    )}
                                 </div>
+                            </div>
 
-                                <div>
-                                    <h4 className="font-medium text-sm text-gray-700 mb-3">Component Flow:</h4>
-                                    <div className="flex items-center gap-3 overflow-x-auto pb-4">
-                                        {/* Compressor */}
+                            <div>
+                                <h4 className="font-medium text-sm text-gray-700 mb-3">Component Flow:</h4>
+                                <div className="flex items-start gap-3 overflow-x-auto pb-4">
+                                    {/* Compressor */}
+                                    <div className="flex flex-col items-center gap-2">
                                         <div 
                                             onClick={() => {
                                                 const productInfo = getProductDescription(currentConfig.compressor);
@@ -227,38 +204,79 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                                 {currentConfig.compressor}
                                             </div>
                                         </div>
+                                    </div>
 
-                                        <div className="flex-shrink-0 text-gray-400 text-2xl">→</div>
+                                    <div className="flex-shrink-0 text-gray-400 text-2xl pt-3">→</div>
 
-                                        {selectedComponentConfig.components.map((component, index) => (
+                                    {selectedComponentConfig.components.map((component, index) => {
+                                        // Determine if this is the dryer component by checking if it matches the product_range
+                                        const isDryer = selectedFlowOption && component.includes(selectedFlowOption.product_range.split(' ')[0]);
+                                        
+                                        return (
                                             <React.Fragment key={index}>
-                                                <div 
-                                                    onClick={() => {
-                                                        const productInfo = getProductDescription(component);
-                                                        if (productInfo) setModalProduct({ 
-                                                            name: component, 
-                                                            ...productInfo 
-                                                        });
-                                                    }}
-                                                    className={`flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px] ${getProductDescription(component) ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors' : ''}`}
-                                                >
-                                                    <div className="font-medium text-gray-900 text-sm">
-                                                        {component}
+                                                <div className="flex flex-col items-center gap-2">
+                                                    <div 
+                                                        onClick={() => {
+                                                            const productInfo = getProductDescription(component);
+                                                            if (productInfo) setModalProduct({ 
+                                                                name: component, 
+                                                                ...productInfo 
+                                                            });
+                                                        }}
+                                                        className={`flex-shrink-0 bg-gray-100 border-2 border-gray-300 rounded-lg px-4 py-3 text-center min-w-[120px] ${getProductDescription(component) ? 'cursor-pointer hover:bg-blue-50 hover:border-blue-400 transition-colors' : ''}`}
+                                                    >
+                                                        <div className="font-medium text-gray-900 text-sm">
+                                                            {component}
+                                                        </div>
                                                     </div>
+                                                    
+                                                    {/* Navigation arrows under dryer component */}
+                                                    {!reviewMode && isDryer && result.configurations.length > 1 && (
+                                                        <div className="flex flex-col items-center gap-1 mt-2">
+                                                            <div className="flex gap-2">
+                                                                <button
+                                                                    onClick={handlePrevious}
+                                                                    disabled={currentIndex === 0}
+                                                                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-sm"
+                                                                >
+                                                                    ←
+                                                                </button>
+                                                                <button
+                                                                    onClick={handleNext}
+                                                                    disabled={currentIndex === result.configurations.length - 1}
+                                                                    className="px-3 py-1 bg-gray-200 text-gray-700 rounded hover:bg-gray-300 disabled:bg-gray-100 disabled:text-gray-400 disabled:cursor-not-allowed text-sm"
+                                                                >
+                                                                    →
+                                                                </button>
+                                                            </div>
+                                                            <div className="text-xs text-gray-500">
+                                                                {currentIndex + 1} of {result.configurations.length}
+                                                            </div>
+                                                        </div>
+                                                    )}
                                                 </div>
                                                 {index < selectedComponentConfig.components.length - 1 && (
-                                                    <div className="flex-shrink-0 text-gray-400 text-2xl">→</div>
+                                                    <div className="flex-shrink-0 text-gray-400 text-2xl pt-3">→</div>
                                                 )}
                                             </React.Fragment>
-                                        ))}
-                                    </div>
+                                        );
+                                    })}
                                 </div>
+                            </div>
 
-                                <div className="mt-6 pt-6 border-t">
+                            <div className="mt-6 pt-6 border-t">
+                                {reviewMode ? (
                                     <button className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 font-medium">
                                         Export to PDF
                                     </button>
-                                </div>
+                                ) : (
+                                    <button 
+                                        onClick={() => setReviewMode(true)}
+                                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 font-medium"
+                                    >
+                                        Select and Review
+                                    </button>
+                                )}
                             </div>
                         </div>
                     )}
