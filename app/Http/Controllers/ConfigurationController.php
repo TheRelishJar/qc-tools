@@ -246,7 +246,7 @@ class ConfigurationController extends Controller
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
                             '--disable-gpu',
-                            '--crash-dumps-dir=/var/www/qc-tools/storage/chrome-crash'
+                            '--disable-breakpad'
                         ])
                         ->setOption('env', [
                             'LD_LIBRARY_PATH' => '/usr/lib/x86_64-linux-gnu'
