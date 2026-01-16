@@ -241,15 +241,15 @@ class ConfigurationController extends Controller
         // Generate PDF
        $pdf = Pdf::view('pdf.configuration', $pdfData)
             ->withBrowsershot(function ($browsershot) {
-                $browsershot->setChromePath('/var/www/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome_wrapper.sh')
+                $browsershot->setChromePath('/var/www/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome')
                         ->noSandbox()
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
-                            '--disable-gpu',
-                            '--disable-breakpad'
+                            '--disable-gpu'
                         ])
                         ->setOption('env', [
-                            'LD_LIBRARY_PATH' => '/usr/lib/x86_64-linux-gnu'
+                            'LD_LIBRARY_PATH' => '/usr/lib/x86_64-linux-gnu',
+                            'CHROME_CRASH_REPORTER_DATABASE' => '/var/www/qc-tools/storage/chrome-crash'
                         ]);
             })
             ->format('a4')
