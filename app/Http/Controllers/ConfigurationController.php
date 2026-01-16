@@ -241,7 +241,7 @@ class ConfigurationController extends Controller
         // Generate PDF
        $pdf = Pdf::view('pdf.configuration', $pdfData)
             ->withBrowsershot(function ($browsershot) {
-                $browsershot->setChromePath('/var/www/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome')
+                $browsershot->setChromePath('/var/www/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome_wrapper.sh')
                         ->noSandbox()
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
