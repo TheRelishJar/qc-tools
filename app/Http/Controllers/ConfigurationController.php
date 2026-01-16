@@ -241,7 +241,8 @@ class ConfigurationController extends Controller
         // Generate PDF
        $pdf = Pdf::view('pdf.configuration', $pdfData)
             ->withBrowsershot(function ($browsershot) {
-                $browsershot->setChromePath('/usr/bin/chromium-browser');
+                $browsershot->noSandbox()
+                        ->setOption('args', ['--disable-dev-shm-usage']);
             })
             ->format('a4')
             ->name('configuration-' . date('Y-m-d-His') . '.pdf');
