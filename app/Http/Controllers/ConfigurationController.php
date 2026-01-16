@@ -243,7 +243,10 @@ class ConfigurationController extends Controller
             ->withBrowsershot(function ($browsershot) {
                 $browsershot->setChromePath('/var/www/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome')
                         ->noSandbox()
-                        ->setOption('args', ['--disable-dev-shm-usage']);
+                        ->setOption('args', ['--disable-dev-shm-usage'])
+                        ->setOption('env', [
+                            'LD_LIBRARY_PATH' => '/usr/lib/x86_64-linux-gnu'
+                        ]);
             })
             ->format('a4')
             ->name('configuration-' . date('Y-m-d-His') . '.pdf');
