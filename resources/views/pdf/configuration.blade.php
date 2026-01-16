@@ -5,7 +5,7 @@
     <title>Configuration Export</title>
     <style>
         @page {
-            margin: 100px 40px 60px 40px;
+            margin: 50px 40px 60px 40px;
         }
         
         * {
@@ -25,30 +25,26 @@
         .header {
             position: running(header);
             text-align: center;
-            padding: 10px 0;
+            padding: 5px 0;
             border-bottom: 2px solid #333;
         }
         
         .logo-space {
             height: 40px;
-            background: #f5f5f5;
-            border: 1px dashed #ccc;
             display: flex;
             align-items: center;
             justify-content: center;
-            color: #999;
-            margin-bottom: 5px;
-            font-size: 9pt;
+            margin-bottom: 3px;
+        }
+        
+        .logo-space img {
+            max-height: 40px;
+            max-width: 200px;
         }
         
         .header h1 {
-            font-size: 14pt;
-            margin-bottom: 2px;
-        }
-        
-        .header .subtitle {
-            font-size: 9pt;
-            color: #666;
+            font-size: 10pt;
+            margin-bottom: 10px;
         }
         
         /* Footer on every page */
@@ -94,8 +90,9 @@
         }
         
         .iso-table th {
-            background: #f5f5f5;
+            background: #00387B;
             font-weight: bold;
+            color: white;
         }
         
         .iso-table .class-number {
@@ -153,6 +150,73 @@
             color: #333;
             border-bottom: 1px solid #ddd;
             padding-bottom: 5px;
+        }
+        
+        /* Horizontal Configuration Sequence */
+        .horizontal-sequence {
+            position: relative;
+            margin: 20px 0 30px 0;
+            padding: 15px 0;
+        }
+        
+        .horizontal-sequence::before {
+            content: '';
+            position: absolute;
+            left: 0;
+            right: 0;
+            top: 50%;
+            height: 2px;
+            background: #999;
+            z-index: 0;
+        }
+        
+        .horizontal-sequence {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 5px;
+        }
+        
+        .sequence-item {
+            position: relative;
+            text-align: center;
+            background: white;
+            z-index: 1;
+            flex: 1 1 0;
+            min-width: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+        
+        .sequence-item img {
+            width: 100%;
+            height: 70px;
+            object-fit: contain;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            padding: 3px;
+        }
+        
+        .no-image-small {
+            width: 100%;
+            height: 70px;
+            border: 2px solid #ddd;
+            border-radius: 4px;
+            background: white;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 6pt;
+            color: #999;
+        }
+        
+        .sequence-name {
+            font-size: 6pt;
+            margin-top: 3px;
+            word-wrap: break-word;
+            line-height: 1.1;
         }
         
         .config-header {
@@ -278,23 +342,24 @@
         }
         
         .note-box.refrigerant {
-            background: #e3f2fd;
-            border: 1px solid #90caf9;
+            background: #E6EEF7;
+            border: 1px solid #00387B;
         }
         
         .note-box.desiccant {
-            background: #f3e5f5;
-            border: 1px solid #ce93d8;
+            background: #E6EEF7;
+            border: 1px solid #00387B;
         }
         
         .note-box.qaf {
-            background: #e8f5e9;
-            border: 1px solid #81c784;
+            background: #E6EEF7;
+            border: 1px solid #00387B;
         }
         
         .note-label {
             font-weight: bold;
             margin-bottom: 3px;
+            color: #00387B;
         }
         
         .note-text {
@@ -305,9 +370,10 @@
 <body>
     <!-- Header on every page -->
     <div class="header">
-        <div class="logo-space">Logo Placeholder</div>
-        <h1>Air Compressor Configuration</h1>
-        <div class="subtitle">Quality Air System Configuration Report</div>
+        <div class="logo-space">
+            <img src="{{ public_path('images/quincy-logo.png') }}" alt="Quincy Compressor">
+        </div>
+        <h1>ISO 8573-1-2010 Air Purity Class Selection Tool</h1>
     </div>
     
     <!-- Footer with page numbers on every page -->
@@ -363,6 +429,31 @@
         <!-- Configuration Details with Vertical Flow -->
         <div class="parts-section">
             <h2>Selected Configuration</h2>
+            
+            <!-- Horizontal Image Sequence -->
+            <div class="horizontal-sequence">
+                <!-- Compressor -->
+                <div class="sequence-item">
+                    @if(!empty($configuration['compressor_image']))
+                        <img src="{{ $configuration['compressor_image'] }}" alt="{{ $configuration['compressor'] }}">
+                    @else
+                        <div class="no-image-small">No Image</div>
+                    @endif
+                    <div class="sequence-name">{{ $configuration['compressor'] }}</div>
+                </div>
+                
+                <!-- Components -->
+                @foreach($configuration['components'] as $component)
+                    <div class="sequence-item">
+                        @if(!empty($component['image']))
+                            <img src="{{ $component['image'] }}" alt="{{ $component['name'] }}">
+                        @else
+                            <div class="no-image-small">No Image</div>
+                        @endif
+                        <div class="sequence-name">{{ $component['name'] }}</div>
+                    </div>
+                @endforeach
+            </div>
             
             <div class="parts-flow">
             <!-- Compressor Details -->

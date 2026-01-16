@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 
 // Results View Component
@@ -7,6 +7,8 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
     const [selectedFlowIndexes, setSelectedFlowIndexes] = useState({});
     const [modalProduct, setModalProduct] = useState(null);
     const [reviewMode, setReviewMode] = useState(false); // Track if in review mode
+    const flowContainerRef = useRef(null);
+    const [lineWidth, setLineWidth] = useState(0);
     
     const hasConfigurations = result.configurations && result.configurations.length > 0;
     const currentConfig = hasConfigurations ? result.configurations[currentIndex] : null;
@@ -21,6 +23,52 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
             setSelectedFlowIndexes(initialIndexes);
         }
     }, [result]);
+
+    // Calculate line width from first to last component
+    useEffect(() => {
+        if (!flowContainerRef.current || !currentConfig) return;
+        
+        const updateLineWidth = () => {
+            const container = flowContainerRef.current;
+            if (!container) return;
+            
+            const items = container.querySelectorAll('.component-item');
+            
+            if (items.length < 2) {
+                setLineWidth(0);
+                return;
+            }
+            
+            const first = items[0].getBoundingClientRect();
+            const last = items[items.length - 1].getBoundingClientRect();
+            
+            // Width from center of first to center of last
+            setLineWidth(last.left - first.left);
+        };
+        
+        // Delay to ensure images have loaded and sized
+        const timeoutId = setTimeout(updateLineWidth, 150);
+        
+        // Also update on image load
+        const images = flowContainerRef.current?.querySelectorAll('img');
+        images?.forEach(img => {
+            if (img.complete) {
+                updateLineWidth();
+            } else {
+                img.addEventListener('load', updateLineWidth);
+            }
+        });
+        
+        window.addEventListener('resize', updateLineWidth);
+        
+        return () => {
+            clearTimeout(timeoutId);
+            window.removeEventListener('resize', updateLineWidth);
+            images?.forEach(img => {
+                img.removeEventListener('load', updateLineWidth);
+            });
+        };
+    }, [currentConfig, selectedFlowIndexes, currentIndex, reviewMode]);
 
     /**
      * Get product info with smart matching
@@ -120,31 +168,17 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
 
     return (
         <div className="space-y-6">
-            {/* Back Button */}
-            <button
-                onClick={() => {
-                    if (reviewMode) {
-                        setReviewMode(false); // Go back to selection mode
-                    } else {
-                        onBack(); // Go back to input
-                    }
-                }}
-                className="text-blue-600 hover:text-blue-800 font-medium"
-            >
-                ← {reviewMode ? 'Back to Selection' : 'Back to Input'}
-            </button>
-
             {/* Input Summary */}
-            <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+            <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl">
                 <div className="p-6">
                     {/* ISO Configuration as Table */}
                     <div className="mb-4">
-                        <table className="w-full border-collapse">
+                        <table className="w-full border-collapse overflow-hidden rounded-lg">
                             <thead>
-                                <tr className="border-b-2 border-gray-300">
-                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-gray-300">Particulate</th>
-                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-gray-300">Water</th>
-                                    <th className="text-center py-2 px-3 font-semibold text-sm">Oil</th>
+                                <tr className="bg-[#00387B]">
+                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-white text-white rounded-tl-lg">Particulate</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-white text-white">Water</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm text-white rounded-tr-lg">Oil</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -185,34 +219,35 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
 
             {/* Results */}
             {!hasConfigurations ? (
-                <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl">
                     <div className="p-6 text-center">
                         <div className="text-yellow-600 text-lg font-medium mb-2">
                             No Compatible Configurations Found
                         </div>
-                        <p className="text-gray-600">
+                        <p className="text-gray-600 mb-6">
                             {result.message}
                         </p>
+                        <button
+                            onClick={onBack}
+                            className="bg-gray-200 text-gray-700 py-3 px-6 rounded-md hover:bg-gray-300 font-medium"
+                        >
+                            ← Back to Input
+                        </button>
                     </div>
                 </div>
             ) : (
-                <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl">
                     {currentConfig && selectedFlowOption && selectedComponentConfig && (
                         <div className="p-6">
-                            {/* Product Name and Flow Range Info */}
+                            {/* Flow Range Info */}
                             <div className="mb-6">
-                                <h3 className="text-xl font-semibold mb-2">
-                                    {selectedFlowOption.product_range}
-                                    {currentConfig.dewpoint && ` (${currentConfig.dewpoint})`}
-                                </h3>
-                                
                                 <div className="text-sm text-gray-600">
                                     <span className="font-medium">Flow Range:</span>{' '}
                                     {!reviewMode && currentConfig.flow_options.length > 1 ? (
                                         <select
                                             value={selectedFlowIndexes[currentIndex] || 0}
                                             onChange={handleFlowOptionChange}
-                                            className="border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm"
+                                            className="border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm"
                                         >
                                             {currentConfig.flow_options.map((option, idx) => (
                                                 <option key={idx} value={idx}>
@@ -221,20 +256,23 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                             ))}
                                         </select>
                                     ) : (
-                                        <span>{selectedFlowOption.flow_range} CFM</span>
+                                        <span className="inline-block" style={{ paddingTop: '9px', paddingBottom: '9px' }}>{selectedFlowOption.flow_range} CFM</span>
                                     )}
                                 </div>
                             </div>
 
+                            {/* Component Flow */}
                             <div>
-                                <h4 className="font-medium text-sm text-gray-700 mb-3">Component Flow:</h4>
                                 <div className="relative">
-                                    {/* Connecting line behind components */}
-                                    <div className="absolute top-[60px] left-[60px] right-[60px] h-0.5 bg-gray-400 z-0"></div>
-                                    
-                                    <div className="flex items-start gap-3 overflow-x-auto pb-4 relative z-10">
+                                    <div ref={flowContainerRef} className="flex items-start gap-3 overflow-x-auto pb-4 relative">
+                                        {/* Connecting line - dynamically sized from first to last component */}
+                                        {lineWidth > 0 && (
+                                            <div className="absolute top-[60px] left-[60px] h-0.5 bg-gray-400 z-0" style={{
+                                                width: `${lineWidth}px`
+                                            }}></div>
+                                        )}
                                         {/* Compressor */}
-                                        <div className="flex flex-col items-center gap-2">
+                                        <div className="flex flex-col items-center gap-2 component-item relative z-10">
                                             <div 
                                                 onClick={() => {
                                                     const productInfo = getProductDescription(currentConfig.compressor);
@@ -246,15 +284,17 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                                 className={`flex-shrink-0 flex flex-col items-center gap-2 ${getProductDescription(currentConfig.compressor) ? 'cursor-pointer' : ''}`}
                                             >
                                                 {/* Image */}
-                                                <div className="w-[120px] h-[120px] flex items-center justify-center bg-white border-2 border-gray-300 rounded-lg hover:border-blue-400 transition-colors">
+                                                <div className="h-[120px] flex items-center justify-center overflow-hidden p-2">
                                                     {getProductDescription(currentConfig.compressor)?.image_path ? (
                                                         <img 
                                                             src={getProductDescription(currentConfig.compressor).image_path} 
                                                             alt={currentConfig.compressor}
-                                                            className="max-w-full max-h-full object-contain p-2"
+                                                            className="h-full w-auto object-contain transition-transform hover:scale-110"
+                                                            style={{ maxWidth: 'none' }}
+                                                            loading="eager"
                                                         />
                                                     ) : (
-                                                        <div className="text-gray-400 text-xs text-center px-2">No Image</div>
+                                                        <div className="text-gray-400 text-xs text-center px-2 bg-white">No Image</div>
                                                     )}
                                                 </div>
                                                 {/* Name */}
@@ -269,7 +309,7 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                             const isDryer = selectedFlowOption && component.includes(selectedFlowOption.product_range.split(' ')[0]);
                                             
                                             return (
-                                                <div key={index} className="flex flex-col items-center gap-2">
+                                                <div key={index} className="flex flex-col items-center gap-2 component-item relative z-10">
                                                     <div 
                                                         onClick={() => {
                                                             const productInfo = getProductDescription(component);
@@ -281,15 +321,17 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                                         className={`flex-shrink-0 flex flex-col items-center gap-2 ${getProductDescription(component) ? 'cursor-pointer' : ''}`}
                                                     >
                                                         {/* Image */}
-                                                        <div className="w-[120px] h-[120px] flex items-center justify-center bg-white border-2 border-gray-300 rounded-lg hover:border-blue-400 transition-colors">
+                                                        <div className="h-[120px] flex items-center justify-center overflow-hidden p-2">
                                                             {getProductDescription(component)?.image_path ? (
                                                                 <img 
                                                                     src={getProductDescription(component).image_path} 
                                                                     alt={component}
-                                                                    className="max-w-full max-h-full object-contain p-2"
+                                                                    className="h-full w-auto object-contain transition-transform hover:scale-110"
+                                                                    style={{ maxWidth: 'none' }}
+                                                                    loading="eager"
                                                                 />
                                                             ) : (
-                                                                <div className="text-gray-400 text-xs text-center px-2">No Image</div>
+                                                                <div className="text-gray-400 text-xs text-center px-2 bg-white">No Image</div>
                                                             )}
                                                         </div>
                                                         {/* Name */}
@@ -330,21 +372,38 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                             </div>
 
                             <div className="mt-6 pt-6 border-t">
+                                <div className="flex gap-3">
+                                    {/* Back Button */}
+                                    <button
+                                        onClick={() => {
+                                            if (reviewMode) {
+                                                setReviewMode(false);
+                                            } else {
+                                                onBack();
+                                            }
+                                        }}
+                                        className="flex-1 bg-gray-200 text-gray-700 py-3 px-4 rounded-md hover:bg-gray-300 font-medium"
+                                    >
+                                        ← {reviewMode ? 'Back to Selection' : 'Back to Input'}
+                                    </button>
+                                    
+                                    {/* Action Button */}
                                 {reviewMode ? (
                                     <button 
                                         onClick={handleExportPdf}
-                                        className="w-full bg-green-600 text-white py-3 px-4 rounded-md hover:bg-green-700 font-medium"
+                                        className="flex-1 bg-[#00387B] text-white py-3 px-4 rounded-md hover:bg-[#00468F] font-medium"
                                     >
                                         Export to PDF
                                     </button>
                                 ) : (
                                     <button 
                                         onClick={() => setReviewMode(true)}
-                                        className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 font-medium"
+                                        className="flex-1 bg-[#00387B] text-white py-3 px-4 rounded-md hover:bg-[#00468F] font-medium"
                                     >
                                         Select and Review
                                     </button>
                                 )}
+                                </div>
                             </div>
                         </div>
                     )}
@@ -354,57 +413,67 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
             {/* Product Description Modal */}
             {modalProduct && (
                 <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center z-50 p-4" onClick={() => setModalProduct(null)}>
-                    <div className="bg-white rounded-lg shadow-xl max-w-2xl w-full p-6" onClick={(e) => e.stopPropagation()}>
-                        <div className="flex justify-between items-start mb-4">
-                            <h3 className="text-xl font-semibold text-gray-900">{modalProduct.name}</h3>
+                    <div className="bg-white rounded-3xl shadow-xl max-w-2xl w-full overflow-hidden" onClick={(e) => e.stopPropagation()}>
+                        {/* Blue Header Bar */}
+                        <div className="bg-[#00387B] text-white px-6 py-4 flex items-center justify-between">
+                            <h3 className="text-xl font-bold">{modalProduct.name}</h3>
                             <button
                                 onClick={() => setModalProduct(null)}
-                                className="text-gray-400 hover:text-gray-600 text-2xl font-bold leading-none"
+                                className="text-white hover:text-gray-200 text-3xl font-bold leading-none"
                             >
                                 ×
                             </button>
                         </div>
                         
-                        {/* Product Image */}
-                        {modalProduct.image_path && (
-                            <div className="mb-4 flex justify-center bg-gray-50 rounded-lg p-4">
-                                <img 
-                                    src={modalProduct.image_path} 
-                                    alt={modalProduct.name}
-                                    className="max-w-full max-h-64 object-contain"
-                                />
+                        {/* Modal Content */}
+                        <div className="p-6">
+                            {/* Product Image and Description - Side by Side */}
+                            <div className="flex flex-col md:flex-row gap-4 mb-4">
+                                {/* Product Image */}
+                                {modalProduct.image_path && (
+                                    <div className="flex-shrink-0 md:w-64">
+                                        <div className="flex justify-center bg-gray-50 rounded-lg p-4">
+                                            <img 
+                                                src={modalProduct.image_path} 
+                                                alt={modalProduct.name}
+                                                className="max-w-full max-h-64 object-contain"
+                                                loading="eager"
+                                            />
+                                        </div>
+                                    </div>
+                                )}
+                                
+                                {/* Main Description */}
+                                {modalProduct.description && (
+                                    <div className="flex-1 text-gray-700 whitespace-pre-line">
+                                        {modalProduct.description}
+                                    </div>
+                                )}
                             </div>
-                        )}
-                        
-                        {/* Main Description */}
-                        {modalProduct.description && (
-                            <div className="text-gray-700 whitespace-pre-line mb-4">
-                                {modalProduct.description}
-                            </div>
-                        )}
 
                         {/* Notes Section */}
                         <div className="space-y-3">
                             {modalProduct.refrigerant_dryer_note && (
-                                <div className="bg-blue-50 border border-blue-200 rounded-md p-3">
-                                    <p className="text-sm font-medium text-blue-900 mb-1">Refrigerant Dryer Note:</p>
+                                <div className="bg-[#E6EEF7] border border-[#00387B] rounded-md p-3">
+                                    <p className="text-sm font-medium text-[#00387B] mb-1">Refrigerant Dryer Note:</p>
                                     <p className="text-sm text-gray-700 whitespace-pre-line">{modalProduct.refrigerant_dryer_note}</p>
                                 </div>
                             )}
 
                             {modalProduct.desiccant_dryer_note && (
-                                <div className="bg-purple-50 border border-purple-200 rounded-md p-3">
-                                    <p className="text-sm font-medium text-purple-900 mb-1">Desiccant Dryer Note:</p>
+                                <div className="bg-[#E6EEF7] border border-[#00387B] rounded-md p-3">
+                                    <p className="text-sm font-medium text-[#00387B] mb-1">Desiccant Dryer Note:</p>
                                     <p className="text-sm text-gray-700 whitespace-pre-line">{modalProduct.desiccant_dryer_note}</p>
                                 </div>
                             )}
 
                             {modalProduct.qaf_note && (
-                                <div className="bg-green-50 border border-green-200 rounded-md p-3">
-                                    <p className="text-sm font-medium text-green-900 mb-1">QAF Note:</p>
+                                <div className="bg-[#E6EEF7] border border-[#00387B] rounded-md p-3">
+                                    <p className="text-sm font-medium text-[#00387B] mb-1">QAF Note:</p>
                                     <p className="text-sm text-gray-700 whitespace-pre-line">{modalProduct.qaf_note}</p>
                                 </div>
                             )}
+                        </div>
                         </div>
                     </div>
                 </div>
@@ -627,21 +696,31 @@ export default function Index({ industries, purityLevels, productDescriptions })
     };
 
     return (
-        <div className="min-h-screen bg-gray-100">
+        <div className="min-h-screen bg-[#E8EAED]">
             <Head title="Configuration Tool" />
             
             <header className="bg-white shadow">
                 <div className="max-w-7xl mx-auto py-6 px-4 sm:px-6 lg:px-8">
-                    <h1 className="text-3xl font-bold text-gray-900">
-                        Air Compressor Configuration Tool
-                    </h1>
+                    <div className="flex items-center justify-between">
+                        <img 
+                            src="/images/quincy-logo.png" 
+                            alt="Quincy Compressor" 
+                            className="h-12"
+                        />
+                        <h1 className="text-2xl font-bold text-gray-900">
+                            ISO 8573-1-2010 Air Purity Class Selection Tool
+                        </h1>
+                    </div>
                 </div>
             </header>
 
             <div className="py-12">
                 <div className="max-w-4xl mx-auto sm:px-6 lg:px-8">
                     {!showResults ? (
-                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-lg">
+                        <div className="bg-white overflow-hidden shadow-sm sm:rounded-2xl">
+                            {/* Blue header bar */}
+                            <div className="bg-[#00387B] py-4"></div>
+                            
                             <div className="p-6">
                             <form onSubmit={handleSubmit} className="space-y-6">
                                 
@@ -669,7 +748,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                                 <select
                                                     value={data.preset_industry_id}
                                                     onChange={(e) => setData('preset_industry_id', e.target.value)}
-                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B]"
                                                 >
                                                     <option value="">Select an industry...</option>
                                                     {industries.map((industry) => (
@@ -687,7 +766,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                                 <select
                                                     value={data.preset_application_id}
                                                     onChange={(e) => setData('preset_application_id', e.target.value)}
-                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                                    className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B]"
                                                     disabled={!data.preset_industry_id}
                                                 >
                                                     <option value="">
@@ -713,7 +792,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                                 type="button"
                                                 onClick={handleApplyPreset}
                                                 disabled={!selectedApplication}
-                                                className="w-full bg-blue-600 text-white py-2 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
+                                                className="w-full bg-[#00387B] text-white py-2 px-4 rounded-md hover:bg-[#00468F] disabled:bg-gray-300 disabled:cursor-not-allowed font-medium"
                                             >
                                                 Apply Preset
                                             </button>
@@ -734,7 +813,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             <select
                                                 value={data.particulate_class}
                                                 onChange={(e) => handleClassChange('particulate_class', e.target.value)}
-                                                className={`border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-500 ${highlightedFields.particulate ? 'bg-yellow-100' : ''}`}
+                                                className={`border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] transition-all duration-500 ${highlightedFields.particulate ? 'bg-blue-100' : ''}`}
                                                 required
                                             >
                                                 <option value="">Class...</option>
@@ -748,7 +827,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             <select
                                                 value={getPurityDescription('particulate_class', data.particulate_class)}
                                                 onChange={(e) => handlePurityChange('particulate_class', e.target.value)}
-                                                className={`border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-500 ${highlightedFields.particulate ? 'bg-yellow-100' : ''}`}
+                                                className={`border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm transition-all duration-500 ${highlightedFields.particulate ? 'bg-blue-100' : ''}`}
                                                 required
                                             >
                                                 <option value="">Purity...</option>
@@ -776,7 +855,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             <select
                                                 value={data.water_class}
                                                 onChange={(e) => handleClassChange('water_class', e.target.value)}
-                                                className={`border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-500 ${highlightedFields.water ? 'bg-yellow-100' : ''}`}
+                                                className={`border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] transition-all duration-500 ${highlightedFields.water ? 'bg-blue-100' : ''}`}
                                                 required
                                             >
                                                 <option value="">Class...</option>
@@ -790,7 +869,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             <select
                                                 value={getPurityDescription('water_class', data.water_class)}
                                                 onChange={(e) => handlePurityChange('water_class', e.target.value)}
-                                                className={`border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-500 ${highlightedFields.water ? 'bg-yellow-100' : ''}`}
+                                                className={`border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm transition-all duration-500 ${highlightedFields.water ? 'bg-blue-100' : ''}`}
                                                 required
                                             >
                                                 <option value="">Purity...</option>
@@ -818,7 +897,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             <select
                                                 value={data.oil_class}
                                                 onChange={(e) => handleClassChange('oil_class', e.target.value)}
-                                                className={`border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 transition-all duration-500 ${highlightedFields.oil ? 'bg-yellow-100' : ''}`}
+                                                className={`border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] transition-all duration-500 ${highlightedFields.oil ? 'bg-blue-100' : ''}`}
                                                 required
                                             >
                                                 <option value="">Class...</option>
@@ -832,7 +911,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             <select
                                                 value={getPurityDescription('oil_class', data.oil_class)}
                                                 onChange={(e) => handlePurityChange('oil_class', e.target.value)}
-                                                className={`border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500 text-sm transition-all duration-500 ${highlightedFields.oil ? 'bg-yellow-100' : ''}`}
+                                                className={`border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm transition-all duration-500 ${highlightedFields.oil ? 'bg-blue-100' : ''}`}
                                                 required
                                             >
                                                 <option value="">Purity...</option>
@@ -863,7 +942,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                             value={data.flow}
                                             onChange={(e) => setData('flow', e.target.value)}
                                             placeholder="Leave empty to see all ranges"
-                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-blue-500 focus:ring-blue-500"
+                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B]"
                                         />
                                         {errors.flow && (
                                             <p className="mt-1 text-sm text-red-600">{errors.flow}</p>
@@ -874,7 +953,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                 <button
                                     type="submit"
                                     disabled={processing}
-                                    className="w-full bg-blue-600 text-white py-3 px-4 rounded-md hover:bg-blue-700 disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
+                                    className="w-full bg-[#00387B] text-white py-3 px-4 rounded-md hover:bg-[#00468F] disabled:bg-gray-400 disabled:cursor-not-allowed font-medium"
                                 >
                                     {processing ? 'Generating...' : 'Generate Configurations'}
                                 </button>
