@@ -241,16 +241,19 @@ class ConfigurationController extends Controller
         // Generate PDF
        $pdf = Pdf::view('pdf.configuration', $pdfData)
             ->withBrowsershot(function ($browsershot) {
-                $browsershot->noSandbox()
+                $browsershot->setChromePath('/var/lib/apache/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome')
+                        ->noSandbox()
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
                             '--disable-gpu',
                             '--disable-crash-reporter'
+                        ])
+                        ->setOption('env', [
+                            'CHROME_CRASH_REPORTER_DATABASE' => '/srv/prod/qc-tools/storage/chrome-crash'
                         ]);
             })
             ->format('a4')
             ->name('configuration-' . date('Y-m-d-His') . '.pdf');
-
         return $pdf->download();
     }
 
