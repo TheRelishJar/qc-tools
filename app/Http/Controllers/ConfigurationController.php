@@ -246,10 +246,7 @@ class ConfigurationController extends Controller
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
                             '--disable-gpu',
-                            '--disable-crash-reporter'
-                        ])
-                        ->setOption('env', [
-                            'CHROME_CRASH_REPORTER_DATABASE' => '/srv/prod/qc-tools/storage/chrome-crash'
+                            '--disable-breakpad'
                         ]);
             })
             ->format('a4')
