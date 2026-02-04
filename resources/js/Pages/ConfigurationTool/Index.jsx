@@ -203,15 +203,15 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                     </div>
 
                     {/* Preset and Flow */}
-                    <div className="text-sm space-y-1">
+                    <div className="text-base space-y-1">
                         {appliedPreset && (
                             <div>
-                                <span className="font-medium">Industry/Application:</span> {appliedPreset.industry}: {appliedPreset.application}
+                                <span className="font-bold text-[#00387B]">Industry/Application:</span> {appliedPreset.industry} - {appliedPreset.application}
                                 {presetModified && <span className="text-gray-500 italic ml-2">(modified)</span>}
                             </div>
                         )}
                         <div>
-                            <span className="font-medium">Flow:</span> {result.input.flow ? `${result.input.flow} CFM` : 'All Ranges'}
+                            <span className="font-bold text-[#00387B]">Flow:</span> {result.input.flow ? `${result.input.flow} CFM` : 'All Ranges'}
                         </div>
                     </div>
                 </div>
@@ -495,6 +495,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
     const [resultData, setResultData] = useState(null);
     const [appliedPreset, setAppliedPreset] = useState(null);
     const [presetModified, setPresetModified] = useState(false);
+    const [clearConfirm, setClearConfirm] = useState(false);
     
     const { data, setData, post, processing, errors } = useForm({
         particulate_class: '',
@@ -627,6 +628,32 @@ export default function Index({ industries, purityLevels, productDescriptions })
                     oil: false
                 });
             }, 1000);
+        }
+    };
+
+    // Clear all inputs
+    const handleClear = () => {
+        if (!clearConfirm) {
+            // First click - show confirmation
+            setClearConfirm(true);
+            setTimeout(() => {
+                setClearConfirm(false);
+            }, 3000); // Reset after 3 seconds if not clicked again
+        } else {
+            // Second click - actually clear
+            setData({
+                particulate_class: '',
+                water_class: '',
+                oil_class: '',
+                flow: '',
+                preset_industry_id: '',
+                preset_application_id: '',
+            });
+            setAppliedPreset(null);
+            setPresetModified(false);
+            setApplications([]);
+            setSelectedApplication(null);
+            setClearConfirm(false);
         }
     };
 
@@ -935,15 +962,28 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                         <label className="block text-sm font-medium text-gray-700 mb-2">
                                             Flow (CFM) - Optional
                                         </label>
-                                        <input
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            value={data.flow}
-                                            onChange={(e) => setData('flow', e.target.value)}
-                                            placeholder="Leave empty to see all ranges"
-                                            className="w-full border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B]"
-                                        />
+                                        <div className="flex flex-col md:flex-row gap-3">
+                                            <input
+                                                type="number"
+                                                step="0.01"
+                                                min="0"
+                                                value={data.flow}
+                                                onChange={(e) => setData('flow', e.target.value)}
+                                                placeholder="Leave empty to see all ranges"
+                                                className="flex-1 border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B]"
+                                            />
+                                            <button
+                                                type="button"
+                                                onClick={handleClear}
+                                                className={`px-6 py-2 rounded-md font-medium transition-colors ${
+                                                    clearConfirm 
+                                                        ? 'bg-red-700 hover:bg-red-800 text-white' 
+                                                        : 'bg-red-600 hover:bg-red-700 text-white'
+                                                }`}
+                                            >
+                                                {clearConfirm ? 'Click Again to Confirm' : 'Clear All'}
+                                            </button>
+                                        </div>
                                         {errors.flow && (
                                             <p className="mt-1 text-sm text-red-600">{errors.flow}</p>
                                         )}
