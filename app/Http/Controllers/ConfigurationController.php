@@ -245,10 +245,8 @@ class ConfigurationController extends Controller
                         ->noSandbox()
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
-                            '--disable-gpu'
-                        ])
-                        ->setOption('env', [
-                            'CHROME_CRASH_REPORTER_DATABASE' => '/srv/prod/qc-tools/storage/chrome-crash'
+                            '--disable-gpu',
+                            '--disable-crash-reporter'
                         ]);
             })
             ->format('a4')
