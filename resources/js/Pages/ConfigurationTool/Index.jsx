@@ -214,7 +214,8 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                                 onChange={(e) => setLocalFlow(e.target.value)}
                                 onBlur={handleFlowBlur}
                                 placeholder="All ranges"
-                                className="w-40 border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm"
+                                disabled={reviewMode}
+                                className={`w-40 border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm ${reviewMode ? 'opacity-50 cursor-not-allowed' : ''}`}
                             />
                             <span className="text-sm text-gray-500">CFM</span>
                         </div>
