@@ -241,13 +241,27 @@ class ConfigurationController extends Controller
         // Generate PDF
        $pdf = Pdf::view('pdf.configuration', $pdfData)
             ->withBrowsershot(function ($browsershot) {
-                $browsershot->setChromePath('/var/lib/apache/.cache/puppeteer/chrome/linux-143.0.7499.192/chrome-linux64/chrome')
-                        ->noSandbox()
+                $footerDate = date('F j, Y');
+                $chromePath = env('CHROME_PATH');
+
+                $browsershot->noSandbox()
                         ->setOption('args', [
                             '--disable-dev-shm-usage',
                             '--disable-gpu',
                             '--disable-crash-reporter'
-                        ]);
+                        ])
+                        ->showBrowserHeaderAndFooter()
+                        ->headerHtml('<span></span>')
+                        ->footerHtml('
+                            <div style="width: 100%; font-size: 10px; color: #666; text-align: center; padding: 0 0 8px 0; font-family: Arial, sans-serif;">
+                                Exported on ' . $footerDate . ' &nbsp;|&nbsp; Page <span class="pageNumber"></span> of <span class="totalPages"></span>
+                            </div>
+                        ')
+                        ->margins(10, 10, 20, 10);
+
+                if ($chromePath) {
+                    $browsershot->setChromePath($chromePath);
+                }
             })
             ->format('a4')
             ->name('configuration-' . date('Y-m-d-His') . '.pdf');

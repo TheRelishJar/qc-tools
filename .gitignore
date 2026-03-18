@@ -23,3 +23,5 @@ Homestead.json
 Homestead.yaml
 Thumbs.db
 storage/app/QC_ISO_Tool_Clean_Data.xlsx
+storage/app/QC_ISO_Tool_Clean_Data.xlsx
+*.xlsx
