@@ -1,11 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { Head, useForm } from '@inertiajs/react';
 
-function ResultsView({ result, onBack, appliedPreset, presetModified, purityLevels, productDescriptions }) {
+function ResultsView({ result, onBack, appliedPreset, presetModified, purityLevels, productDescriptions, currentFlow, onFlowChange }) {
     const [currentIndex, setCurrentIndex] = useState(0);
     const [selectedFlowIndexes, setSelectedFlowIndexes] = useState({});
     const [modalProduct, setModalProduct] = useState(null);
     const [reviewMode, setReviewMode] = useState(false);
+    const [localFlow, setLocalFlow] = useState(currentFlow || '');
     const flowContainerRef = useRef(null);
     const [lineWidth, setLineWidth] = useState(0);
     const [lineLeft, setLineLeft] = useState(0);
@@ -14,12 +15,17 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
     const currentConfig = hasConfigurations ? result.configurations[currentIndex] : null;
 
     useEffect(() => {
+        setLocalFlow(currentFlow || '');
+    }, [currentFlow]);
+
+    useEffect(() => {
         if (hasConfigurations) {
             const initialIndexes = {};
             result.configurations.forEach((config, idx) => {
                 initialIndexes[idx] = 0;
             });
             setSelectedFlowIndexes(initialIndexes);
+            setCurrentIndex(0);
         }
     }, [result]);
 
@@ -97,6 +103,10 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
             ...selectedFlowIndexes,
             [currentIndex]: parseInt(e.target.value)
         });
+    };
+
+    const handleFlowBlur = () => {
+        onFlowChange(localFlow);
     };
 
     const selectedFlowOption = currentConfig && currentConfig.flow_options 
@@ -187,15 +197,26 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                         </table>
                     </div>
 
-                    <div className="text-base space-y-1">
+                    <div className="text-base space-y-2">
                         {appliedPreset && (
                             <div>
                                 <span className="font-bold text-[#00387B]">Industry/Application:</span> {appliedPreset.industry} - {appliedPreset.application}
                                 {presetModified && <span className="text-gray-500 italic ml-2">(modified)</span>}
                             </div>
                         )}
-                        <div>
-                            <span className="font-bold text-[#00387B]">Flow:</span> {result.input.flow ? `${result.input.flow} CFM` : 'All Ranges'}
+                        <div className="flex items-center gap-3">
+                            <span className="font-bold text-[#00387B]">Flow:</span>
+                            <input
+                                type="number"
+                                step="0.01"
+                                min="0"
+                                value={localFlow}
+                                onChange={(e) => setLocalFlow(e.target.value)}
+                                onBlur={handleFlowBlur}
+                                placeholder="All ranges"
+                                className="w-40 border-gray-300 rounded-md shadow-sm focus:border-[#00387B] focus:ring-[#00387B] text-sm"
+                            />
+                            <span className="text-sm text-gray-500">CFM</span>
                         </div>
                     </div>
                 </div>
@@ -614,9 +635,7 @@ export default function Index({ industries, purityLevels, productDescriptions })
         }
     };
 
-    const handleSubmit = (e) => {
-        e.preventDefault();
-        
+    const fetchConfigurations = (flow) => {
         fetch('/configuration/generate', {
             method: 'POST',
             headers: {
@@ -628,16 +647,14 @@ export default function Index({ industries, purityLevels, productDescriptions })
                 particulate_class: data.particulate_class,
                 water_class: data.water_class,
                 oil_class: data.oil_class,
-                flow: data.flow,
+                flow: flow,
             }),
         })
         .then(async res => {
             const text = await res.text();
-            
             if (!res.ok) {
                 throw new Error(`HTTP error! status: ${res.status}`);
             }
-            
             try {
                 return JSON.parse(text);
             } catch (e) {
@@ -654,7 +671,17 @@ export default function Index({ industries, purityLevels, productDescriptions })
             alert('Error generating configurations. Check console for details.');
         });
     };
-    
+
+    const handleSubmit = (e) => {
+        e.preventDefault();
+        fetchConfigurations(data.flow);
+    };
+
+    const handleResultsFlowChange = (newFlow) => {
+        setData('flow', newFlow);
+        fetchConfigurations(newFlow);
+    };
+
     const handleBackToInput = () => {
         setShowResults(false);
     };
@@ -961,6 +988,8 @@ export default function Index({ industries, purityLevels, productDescriptions })
                                 presetModified={presetModified}
                                 purityLevels={purityLevels}
                                 productDescriptions={productDescriptions}
+                                currentFlow={data.flow}
+                                onFlowChange={handleResultsFlowChange}
                             />
                         </div>
                     )}
