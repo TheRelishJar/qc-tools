@@ -32,5 +32,10 @@ COPY . .
 # Finish composer install
 RUN composer dump-autoload --optimize --ignore-platform-reqs
 
+# Get Chromium for PDF exports
+RUN apt-get update && apt-get install -y \
+    chromium \
+    && apt-get clean && rm -rf /var/lib/apt/lists/*
+
 EXPOSE 9000
 CMD ["php-fpm"]

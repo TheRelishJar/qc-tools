@@ -169,20 +169,20 @@ function ResultsView({ result, onBack, appliedPreset, presetModified, purityLeve
                             <thead>
                                 <tr className="bg-[#00387B]">
                                     <th className="hidden md:table-cell py-2 px-3 rounded-tl-lg"></th>
-                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-white text-white rounded-tl-lg md:rounded-none border-l border-white">Particulate</th>
-                                    <th className="text-center py-2 px-3 font-semibold text-sm border-r border-white text-white">Water</th>
-                                    <th className="text-center py-2 px-3 font-semibold text-sm text-white rounded-tr-lg">Oil</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm md:text-base border-r border-white text-white rounded-tl-lg md:rounded-none border-l border-white">Particulate</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm md:text-base border-r border-white text-white">Water</th>
+                                    <th className="text-center py-2 px-3 font-semibold text-sm md:text-base text-white rounded-tr-lg">Oil</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <tr className="border-b border-gray-200">
-                                    <td className="hidden md:table-cell py-2 px-3 text-sm font-medium text-gray-500 text-center border-r border-gray-300">Purity Class</td>
+                                    <td className="hidden md:table-cell py-2 px-3 text-sm md:text-base font-medium text-gray-500 text-center border-r border-gray-300">Purity Class</td>
                                     <td className="py-2 px-3 font-medium text-center border-r border-gray-300">{result.input.particulate_class}</td>
                                     <td className="py-2 px-3 font-medium text-center border-r border-gray-300">{result.input.water_class}</td>
                                     <td className="py-2 px-3 font-medium text-center">{result.input.oil_class}</td>
                                 </tr>
                                 <tr>
-                                    <td className="hidden md:table-cell py-2 px-3 text-sm font-medium text-gray-500 text-center border-r border-gray-300">Contaminant Range</td>
+                                    <td className="hidden md:table-cell py-2 px-3 text-sm md:text-base font-medium text-gray-500 text-center border-r border-gray-300">Contaminant Range</td>
                                     <td className="py-2 px-3 text-sm text-gray-600 text-center border-r border-gray-300 whitespace-pre-line">
                                         {getPurityDescription('particle', result.input.particulate_class)}
                                     </td>
