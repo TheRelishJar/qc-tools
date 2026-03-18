@@ -24,17 +24,6 @@ services:
     depends_on:
       - app
 
-  node:
-    build: .
-    container_name: qc-tools-node
-    command: npm run dev
-    ports:
-      - "5173:5173"
-    volumes:
-      - .:/var/www
-      - node_modules:/var/www/node_modules
-    working_dir: /var/www
-
   db:
     image: mysql:8.0
     container_name: qc-tools-db
@@ -51,5 +40,4 @@ services:
 
 volumes:
   vendor:
-  node_modules:
   db_data:
